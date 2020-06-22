@@ -18,10 +18,10 @@ sim_data <- function(n, lambda, time_spike, A, b, gamma)
   return(list("y" = b + c + rnorm(n, 0, 1/sqrt(lambda)), "c" = c, "s" = s))
 }
 
-data <- sim_data(n = 1000, lambda = 10, time_spike = c(100, 101, 103, 200, 300, 600), 
+data <- sim_data(n = 1000, lambda = 10, time_spike = c(100, 101, 103, 700, 300, 600), 
                  A = 5, gamma = 0.8, b = 2)
 y = data$y 
-plot(y, type = "l")
+plot(y, type = "l", main = "")
 
 
 
@@ -197,18 +197,21 @@ gibbs_calcium <- function(nrep, y,
 }
 ## magari il kalman filter lo posso fare solo per un tot di iterazioni - burnin ?
 
-nrep = 1500
+nrep = 5000
+start <- Sys.time()
 prova <- gibbs_calcium(nrep = nrep, y = y, 
-                       lambda_start = 10, b_start = 2,
+                       lambda_start = 10, b_start = 0,
                        gamma_start = 0.5, A_start = 5,
-                       eps_gamma = 0.07, 
-                       eps_A = 0.2)
+                       eps_gamma = 0.05, 
+                       eps_A = 0.17)
+end <- Sys.time()
+end - start
 str(prova)
 
-burnin = 1:700
+burnin = 1:1500
 plot(1:nrep, prova$lambda, type = "l", main = "lambda")
 lines(1:nrep, cumsum(prova$lambda)/1:nrep, col = 2)
-abline(h=10, col = "blue")
+#abline(h=10, col = "blue")
 
 plot(1:nrep, prova$b, type = "l", main = "b")
 lines(1:nrep, cumsum(prova$b)/1:nrep, col = 2)
@@ -222,14 +225,15 @@ plot(1:nrep, prova$A, type = "l", main = "A")
 lines(1:nrep, cumsum(prova$A)/1:nrep, col = 2)
 abline(h=5, col = "blue")
 
-plot(1:1000, colMeans(prova$c[-burnin,]), type = "l")
-lines(1:1000, data$c, col = "blue", lty = 3)
+n = length(y)
+plot(1:n, colMeans(prova$c[-burnin,]), type = "l")
+lines(1:n, data$c, col = "blue", lty = 2)
 
-plot(1:1000, y, type = "l")
-lines(1:1000, mean(prova$b[-burnin]) + colMeans(prova$c[-burnin,]), col = 2)
+plot(1:n, y, type = "l")
+lines(1:n, mean(prova$b[-burnin]) + colMeans(prova$c[-burnin,]), col = 2)
 abline(v = which(colMeans(prova$s[-burnin,])>0.5), col = "salmon", lty = 2)
 
-
+which(colMeans(prova$s[-burnin,])>0.5)
 
 
 
