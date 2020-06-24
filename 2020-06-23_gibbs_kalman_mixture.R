@@ -1,3 +1,5 @@
+library(truncnorm)
+
 data <- read.csv("data.csv", header = FALSE)
 str(data)
 head(data)
@@ -6,45 +8,49 @@ plot(1:length(data$V1[22000:28000]), data$V1[22000:28000], type = "l")
 y = data$V1[22000:28000]
 
 ## mixture ##
-sim_data <- function(n, lambda, time_spike, A, b, gamma, mix_K, )
+sim_data <- function(n, lambda, time_spike, b, gamma, prob, par)
 {
   c = rep(0,n)
   s = rep(0,n)
+  A = rep(0,n)
   s[time_spike] = 1
+  
+  k <- sample(1:length(prob), sum(s), prob, replace = TRUE)
+  A[time_spike] <- rgamma(sum(s), 5, par[k])
   
   for(i in 2:n)
   {
-    c[i] = gamma * c[i-1] + A * s[i]
+    c[i] = gamma * c[i-1] + A[i] * s[i]
   }
-  return(list("y" = b + c + rnorm(n, 0, 1/sqrt(lambda)), "c" = c, "s" = s))
+  return(list("y" = b + c + rnorm(n, 0, 1/sqrt(lambda)), "c" = c, "s" = s, "A" = A))
 }
 
-data <- sim_data(n = 1000, lambda = 10, time_spike = c(100, 101, 103, 700, 300, 600), 
-                 A = 5, gamma = 0.8, b = 2)
+data <- sim_data(n = 1000, lambda = 10, time_spike = c(100, 150, 400, 500, 700, 300, 600,850), 
+                 gamma = 0.8, b = 2,
+                 prob = c(0.1, 0.7, 0.2), par = c(0.6, 1, 2))
+
+data <- sim_data(n = 300, lambda = 10, time_spike = c(10,20,50,140,180,250,270), 
+                 gamma = 0.8, b = 2,
+                 prob = c(0.1, 0.7, 0.2), par = c(0.6, 1, 2))
+
+
 y = data$y 
 plot(y, type = "l", main = "")
 
+data$A[data$A>0]
 
 
-loglik <- function(y, cc, c_0, s, A, b, gamma, lambda)
+loglik <- function(y, cc, c_0, s, A, clus, b, gamma, lambda)
 {
   n = length(y)
-  sum(dnorm(y, mean = b + gamma * c(c_0, cc[1:(n-1)]) + A * s, sd = 1/sqrt(lambda), log = TRUE))
+  sum(dnorm(y, mean = b + gamma * c(c_0, cc[1:(n-1)]) + A[clus] * s, sd = 1/sqrt(lambda), log = TRUE))
 }
 
-# ### verosimiglianza per A
-# A.seq = seq(0.1, 10, length.out = 500)
-# lik.seq = sapply(A.seq, function(x) loglik(y = y, cc = data$c, c_0 = 0,
-#                                            s = data$s, b = 2,
-#                                            A = x, gamma = 0.5, lambda = 10))
-# plot(A.seq, lik.seq, type = "l")
-# abline(v = A.seq[which.max(lik.seq)])
 
-logprior_A <- function(A, hyp_A1, hyp_A2) dgamma(A, hyp_A1, hyp_A2, log = TRUE)
+#logprior_A <- function(A, hyp_A1, hyp_A2) dgamma(A, hyp_A1, hyp_A2, log = TRUE)
+# modificare!!!
+
 logprior_gamma <- function(gamma, hyp_gamma1, hyp_gamma2) dbeta(gamma, hyp_gamma1, hyp_gamma2, log = TRUE)
-# logprior_lambda <- function(lambda, hyp_lambda1, hyp_lambda2) dgamma(lambda, hyp_lambda1, hyp_lambda2, log = TRUE)
-# logprior_b <- function(b, hyp_b1, hyp_b2) dnorm(b, mean = hyp_b1, sd = hyp_b2, log = TRUE)
-
 logprior_b_lambda <- function(b, lambda, hyp_b1, hyp_b2, hyp_lambda1, hyp_lambda2)
 {
   dnorm(b, mean = hyp_b1, sd = 1 / sqrt(hyp_b2 * lambda), log = TRUE) + dgamma(lambda, hyp_lambda1, hyp_lambda2, log = TRUE)
@@ -59,45 +65,27 @@ logpost <- function(y, cc, c_0, s, A, b, gamma, lambda,
     logprior_b_lambda(b, lambda, hyp_b1, hyp_b2, hyp_lambda1, hyp_lambda2)
 }
 
-### posteriori per A
-# A.seq = seq(0.1, 10, length.out = 500)
-# post.seq = sapply(A.seq, function(x) logpost(y = y, cc = data$c, c_0 = 0,
-#                                            s = data$s,
-#                                            A = x, gamma = 0.8, 
-#                                            b = 2, lambda = 10,
-#                                            hyp_A1 = 3, hyp_A2 = 1, hyp_gamma1 = 5, hyp_gamma2 = 2, 
-#                                            hyp_lambda1 = 10, hyp_lambda2 = 1, hyp_b1 = 1, hyp_b2 = 1))
-# plot(A.seq, post.seq, type = "l")
-# abline(v = A.seq[which.max(post.seq)], lty = 2)
 
-### posteriori per gamma
-# gamma.seq = seq(0.2, 0.998, length.out = 500)
-# post.seq = sapply(gamma.seq, function(x) logpost(y = y, cc = data$c, c_0 = 0,
-#                                            s = data$s,
-#                                            A = 5, gamma = x, b = 2, lambda = 10,
-#                                            hyp_A1 = 3, hyp_A2 = 1, hyp_gamma1 = 5, hyp_gamma2 = 2, 
-#                                            hyp_lambda1 = 10, hyp_lambda2 = 1, hyp_b1 = 1, hyp_b2 = 1))
-# plot(gamma.seq, post.seq, type = "l")
-# abline(v = gamma.seq[which.max(post.seq)], lty = 3)
 
 #---------------------# #---------------------# #---------------------# #---------------------# 
 #---------------------# #---------------------# #---------------------# #---------------------# 
 
 gibbs_calcium <- function(nrep, y,
-                          gamma_start = 0.5, A_start = 5, b_start = 2,
+                          gamma_start = 0.8,  b_start = 2, A_start = 5,
                           tau2 = 0.0001, lambda_start = 10, c0 = 0,
                           p = 0.005, 
+                          xi = 1,
                           hyp_A1 = 3, hyp_A2 = 1, hyp_gamma1 = 5, hyp_gamma2 = 2,
                           hyp_lambda1 = 10, hyp_lambda2 = 1, hyp_b1 = 1, hyp_b2 = 1,
                           eps_gamma, eps_A)
 {
   n = length(y)
   # creo matrici di output
-  out_c = matrix(NA, nrep, n)
+  out_c = matrix(NA, nrep, n+1)
   out_s = matrix(NA, nrep, n)
   out_p1 = matrix(NA, nrep, n)
   out_p0 = matrix(NA, nrep, n)
-  out_A = rep(NA, nrep) 
+  out_A = matrix(NA, nrep, n) 
   out_b = rep(NA, nrep)
   out_gamma = rep(NA, nrep) 
   out_lambda = rep(NA, nrep)
@@ -105,46 +93,55 @@ gibbs_calcium <- function(nrep, y,
   filter_mean = numeric(n)
   filter_var = numeric(n)
   
+  cluster = matrix(NA, nrep, n) 
+  
   # inizializzazione dei parametri
   out_c[1,] = 0
+  out_c[,1] = c0
   out_s[1,] = 0
-  out_A[1] = A_start
+  out_A[1,] = A_start
   out_b[1] = b_start
   out_gamma[1] = gamma_start
   out_lambda[1] = lambda_start
-
+  
+  cluster[1,] = 1
+  AA = rep(A_start ,n)
   
   for(i in 1:(nrep-1))
   {
     sigma2 = 1/out_lambda[i]
     
     # sampling di s
-    out_p1[i+1,] = exp(-.5 / sigma2 * (y - out_b[i] - out_gamma[i] * c(c0, out_c[i,1:(n-1)]) - out_A[i])^2 ) * p
-    out_p0[i+1,] = exp(-.5 / sigma2 * (y - out_b[i] - out_gamma[i] * c(c0, out_c[i,1:(n-1)]))^2 ) * (1-p)
+    out_p1[i+1,] = exp(-.5 / sigma2 * (y - out_b[i] - out_gamma[i] * out_c[i,1:n] - AA)^2 ) * p
+    out_p0[i+1,] = exp(-.5 / sigma2 * (y - out_b[i] - out_gamma[i] * out_c[i,1:n])^2 ) * (1-p)
     out_s[i+1,] = apply(cbind(out_p0[i+1,], out_p1[i+1,]), 1, function(x) sample(c(0,1), 1, prob = x))
     
+    cluster[i, out_s[i+1,]==0] = 0
+    AA[cluster[i,]>0] = out_A[i,cluster[i,]]
+    AA[cluster[i,] == 0] = 0
+    
     # sampling di c
-    filter_mean[1] = (sigma2 * (out_b[i] + out_gamma[i] * c0 + out_A[i] * out_s[i,1]) + tau2 * y[1]) / (tau2 + sigma2)
+    filter_mean[1] = (sigma2 * (out_b[i] + out_gamma[i] * out_c[i,1] + AA[1] ) + tau2 * y[1]) / (tau2 + sigma2)
     filter_var[1] = tau2 * sigma2 / (tau2 + sigma2)
     
     for(j in 2:n)
     {
-      filter_mean[j] = (sigma2 * (out_gamma[i] * filter_mean[j-1] + out_A[i] * out_s[i+1,j]) + 
+      filter_mean[j] = (sigma2 * (out_gamma[i] * filter_mean[j-1] + AA[j] ) + 
                           (filter_var[j-1] + tau2) * y[j]) / (filter_var[j-1] + tau2 + sigma2)
       filter_var[j] = ((filter_var[j-1] + tau2) * sigma2) / (filter_var[j-1] + tau2 + sigma2)
     }
-    out_c[i+1,n] = rnorm(1, filter_mean[n], filter_var[n])
+    out_c[i+1,n+1] = rnorm(1, filter_mean[n], filter_var[n])
     
     for(j in (n-1):1)
     {
       back_mean = filter_mean[j] + out_gamma[i] * filter_var[j]/(filter_var[j] + tau2) * 
-        (out_c[i+1,j+1] - out_gamma[i] * filter_mean[j] - out_A[i] * out_s[i+1,j+1])
+        (out_c[i+1,j+2] - out_gamma[i] * filter_mean[j] - AA[j])
       back_var = filter_var[j] - out_gamma[i]^2 * filter_var[j]^2 / (filter_var[j] + tau2)
-      out_c[i+1,j] = rnorm(1, back_mean, back_var)
+      out_c[i+1,j+1] = rnorm(1, back_mean, back_var)
     }
     
     # sampling di lambda (precision)
-    z = y - out_gamma[i] * c(c0, out_c[i+1,1:(n-1)]) - out_A[i] * out_s[i+1,]
+    z = y - out_gamma[i] * out_c[i+1,1:n] - AA
     ssum = sum((z - mean(z))^2)
     out_lambda[i+1] = rgamma(1, hyp_lambda1 + n/2, 
                              hyp_lambda2 + .5 * ssum + .5 * n * hyp_b2 / (n + hyp_b2) * (mean(z) - hyp_b1)^2 )
@@ -155,54 +152,56 @@ gibbs_calcium <- function(nrep, y,
     #out_b[i+1] = out_b[i]
     
     # # MH per gamma: random walk
-    oldgamma = out_gamma[i]
-    newgamma = oldgamma + runif(1, -eps_gamma, eps_gamma)
-    alpha = exp( logpost(y = y, cc = out_c[i+1,], c_0 = c0, s = out_s[i+1,],
-                         A = out_A[i], gamma = newgamma, 
-                         b = out_b[i+1], lambda = out_lambda[i+1],
-                         hyp_A1 = hyp_A1, hyp_A2 = hyp_A2, 
-                         hyp_gamma1 = hyp_gamma1, hyp_gamma2 = hyp_gamma2, 
-                         hyp_lambda1 = hyp_lambda1, hyp_lambda2 = hyp_lambda2, 
-                         hyp_b1 = hyp_b1, hyp_b2 = hyp_b2) -
-                  logpost(y = y, cc = out_c[i+1,], c_0 = c0, s = out_s[i+1,],
-                          A = out_A[i], gamma = oldgamma, 
-                          b = out_b[i+1], lambda = out_lambda[i+1],
-                          hyp_A1 = hyp_A1, hyp_A2 = hyp_A2, 
-                          hyp_gamma1 = hyp_gamma1, hyp_gamma2 = hyp_gamma2, 
-                          hyp_lambda1 = hyp_lambda1, hyp_lambda2 = hyp_lambda2, 
-                          hyp_b1 = hyp_b1, hyp_b2 = hyp_b2) )
-    if(runif(1) < alpha) oldgamma = newgamma
+    oldgamma = out_gamma[i] # <<<- modificare prior su A
+    # newgamma = oldgamma + runif(1, -eps_gamma, eps_gamma)
+    # alpha = exp( logpost(y = y, cc = out_c[i+1,], c_0 = c0, s = out_s[i+1,],
+    #                      A = out_A[i], gamma = newgamma, 
+    #                      b = out_b[i+1], lambda = out_lambda[i+1],
+    #                      hyp_A1 = hyp_A1, hyp_A2 = hyp_A2, 
+    #                      hyp_gamma1 = hyp_gamma1, hyp_gamma2 = hyp_gamma2, 
+    #                      hyp_lambda1 = hyp_lambda1, hyp_lambda2 = hyp_lambda2, 
+    #                      hyp_b1 = hyp_b1, hyp_b2 = hyp_b2) -
+    #               logpost(y = y, cc = out_c[i+1,], c_0 = c0, s = out_s[i+1,],
+    #                       A = out_A[i], gamma = oldgamma, 
+    #                       b = out_b[i+1], lambda = out_lambda[i+1],
+    #                       hyp_A1 = hyp_A1, hyp_A2 = hyp_A2, 
+    #                       hyp_gamma1 = hyp_gamma1, hyp_gamma2 = hyp_gamma2, 
+    #                       hyp_lambda1 = hyp_lambda1, hyp_lambda2 = hyp_lambda2, 
+    #                       hyp_b1 = hyp_b1, hyp_b2 = hyp_b2) )
+    # if(runif(1) < alpha) oldgamma = newgamma
     out_gamma[i+1] = oldgamma
     
-    # MH per A: uso RW normale
-    oldA = out_A[i]
-    newA = rnorm(1, oldA, eps_A)
-    alpha = exp( logpost(y = y, cc = out_c[i+1,], c_0 = c0, s = out_s[i+1,],
-                           A = newA, gamma = out_gamma[i+1], 
-                           b = out_b[i+1], lambda = out_lambda[i+1],
-                           hyp_A1 = hyp_A1, hyp_A2 = hyp_A2, 
-                           hyp_gamma1 = hyp_gamma1, hyp_gamma2 = hyp_gamma2, 
-                           hyp_lambda1 = hyp_lambda1, hyp_lambda2 = hyp_lambda2, 
-                           hyp_b1 = hyp_b1, hyp_b2 = hyp_b2) -
-                   logpost(y = y, cc = out_c[i+1,], c_0 = c0, s = out_s[i+1,],
-                           A = oldA, gamma = out_gamma[i+1], 
-                           b = out_b[i+1], lambda = out_lambda[i+1],
-                           hyp_A1 = hyp_A1, hyp_A2 = hyp_A2, 
-                           hyp_gamma1 = hyp_gamma1, hyp_gamma2 = hyp_gamma2, 
-                           hyp_lambda1 = hyp_lambda1, hyp_lambda2 = hyp_lambda2, 
-                           hyp_b1 = hyp_b1, hyp_b2 = hyp_b2) )
-    if(runif(1) < alpha) oldA = newA
-    out_A[i+1] = oldA
+    # sampling di A
+    
+    for(j in which(out_s[i+1,]>0))
+    {
+      clus_tmp = cluster[i,]
+      clus_tmp[j] = NA
+      clus_tmp[-j][clus_tmp[-j]>0] = as.numeric( factor( clus_tmp[-j][clus_tmp[-j]>0], labels = 1:length(unique(clus_tmp[-j][clus_tmp[-j]>0])) ) )
+      
+      nj = sapply(unique(clus_tmp[-j][clus_tmp[-j]>0]), function(x) sum(clus_tmp[-j][clus_tmp[-j]>0] == x))
+      prob_c = sapply(unique(clus_tmp[-j][clus_tmp[-j]>0]), function(x) dnorm(y[j], mean = out_b[i+1] + out_gamma[i+i] * out_c[i+1,j] + out_A[i,j]) ) *
+        nj / (n-1+xi)
+    }
+    
   }
   return(list(c = out_c, s = out_s, lambda = out_lambda, A = out_A, gamma = out_gamma, b = out_b))
 }
 ## magari il kalman filter lo posso fare solo per un tot di iterazioni - burnin ?
 
+
+marg <- function(y, b, c, c0, gamma, s, sigma2, psi2)
+{
+  nn <- length(y)
+  sqrt(2) * (2*pi*(psi2*s + sigma2))^(-1/2) * exp( - 1/(2*sigma2)*(y - b - gamma * c(c0,c[1:(nn-1)]))^2 ) * 
+    exp( psi2 * s * (y - b - gamma * c(c0,c[1:(nn-1)]))^2 / (2 * sigma2 * (psi2*s + sigma2)) ) 
+}
+
 nrep = 5000
 start <- Sys.time()
 prova <- gibbs_calcium(nrep = nrep, y = y, 
                        lambda_start = 10, b_start = 0,
-                       gamma_start = 0.5, A_start = 5,
+                       gamma_start = 0.8, A_start = 5,
                        eps_gamma = 0.05, 
                        eps_A = 0.17)
 end <- Sys.time()
