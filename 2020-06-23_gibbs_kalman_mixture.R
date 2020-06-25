@@ -103,7 +103,7 @@ gibbs_calcium <- function(nrep, y,
   filter_mean = numeric(n)
   filter_var = numeric(n)
   
-  cluster = matrix(NA, nrep, n) 
+  cluster = matrix(0, nrep, n) 
   
   # inizializzazione dei parametri
   out_c[1,] = 0
@@ -114,7 +114,6 @@ gibbs_calcium <- function(nrep, y,
   out_gamma[1] = gamma_start
   out_lambda[1] = lambda_start
   
-  cluster[1,] = 0 # vettore di lunghezza n con il cluster Zj
   AA = rep(0, n) # contiene un vettore di lunghezza n che vale o 0 o A_Zj
   
   out_s[1,c(50,140,180,250,350,420,460)] = 1
@@ -184,10 +183,6 @@ gibbs_calcium <- function(nrep, y,
     out_p1[i+1,] = exp(-.5 / sigma2 * (y - out_b[i] - out_gamma[i] * out_c[i,1:n] - AA)^2 ) * p
     out_p0[i+1,] = exp(-.5 / sigma2 * (y - out_b[i] - out_gamma[i] * out_c[i,1:n])^2 ) * (1-p)
     out_s[i+1,] = out_s[i,] #apply(cbind(out_p0[i+1,], out_p1[i+1,]), 1, function(x) sample(c(0,1), 1, prob = x))
-    # 
-    # cluster[i+1, out_s[i+1,]==0] = 0
-    # AA[cluster[i,]>0] = out_A[i,cluster[i,]]
-    # AA[cluster[i,] == 0] = 0
     
     # sampling di A
     for(j in which(out_s[i+1,]>0))
