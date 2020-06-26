@@ -70,15 +70,20 @@ logpost <- function(y, cc, c_0, s, A, b, gamma, lambda,
 #---------------------# #---------------------# #---------------------# #---------------------# 
 #---------------------# #---------------------# #---------------------# #---------------------# 
 
-gamma_start = 0.8
-b_start = 2
+marg <- function(y, b, c, gamma, s, sigma2, psi2)
+{
+  2 * dnorm(y, mean = b + gamma * c, sd = sqrt(psi2 + sigma2)) * 
+    (1 - pnorm(0, mean = psi2 / (sigma2 + psi2) * (y-b-gamma*c), sd = sqrt(sigma2 * psi2 / (sigma2 + psi2)) ) )
+}
+
+
+gamma_start = 0.8; b_start = 2
 A_start = 5; tau2 = 0.0001
 lambda_start = 10
-c0 = 0
-p = 0.005
-xi = 1
+c0 = 0; p = 0.005; xi = 1
 hyp_A1 = 3; hyp_A2 = 1; hyp_gamma1 = 5; hyp_gamma2 = 2
 hyp_lambda1 = 10; hyp_lambda2 = 1; hyp_b1 = 1; hyp_b2 = 1
+psi2 = 2
 
 gibbs_calcium <- function(nrep, y,
                           gamma_start = 0.8,  b_start = 2, A_start = 5,
@@ -114,25 +119,23 @@ gibbs_calcium <- function(nrep, y,
   out_gamma[1] = gamma_start
   out_lambda[1] = lambda_start
   
-  AA = rep(0, n) # contiene un vettore di lunghezza n che vale o 0 o A_Zj
+  cluster[1,] = 1 # vettore di lunghezza n con il cluster Zj
+  AA = rep(A_start, n) # contiene un vettore di lunghezza n che vale o 0 o A_Zj
   
-  out_s[1,c(50,140,180,250,350,420,460)] = 1
-  cluster[1,c(50,140,180,350)] = 1
-  cluster[1,c(250,420,460)] = 2
-  out_A[1,1:2] = c(4,12)
-  AA[cluster[1,]>0] = out_A[1,cluster[1,]]
+  #out_s[1,c(50,140,180,250,350,420,460)] = 1
+  
   
   for(i in 1:(nrep-1))
   {
     sigma2 = 1/out_lambda[i]
 
     # sampling di c
-    filter_mean[1] = (sigma2 * (out_b[i] + out_gamma[i] * out_c[i,1] + AA[1] ) + tau2 * y[1]) / (tau2 + sigma2)
+    filter_mean[1] = (sigma2 * (out_b[i] + out_gamma[i] * out_c[i,1] + AA[1]*out_s[i,1] ) + tau2 * y[1]) / (tau2 + sigma2)
     filter_var[1] = tau2 * sigma2 / (tau2 + sigma2)
     
     for(j in 2:n)
     {
-      filter_mean[j] = (sigma2 * (out_gamma[i] * filter_mean[j-1] + AA[j] ) + 
+      filter_mean[j] = (sigma2 * (out_gamma[i] * filter_mean[j-1] + AA[j] * out_s[i,j] ) + 
                           (filter_var[j-1] + tau2) * y[j]) / (filter_var[j-1] + tau2 + sigma2)
       filter_var[j] = ((filter_var[j-1] + tau2) * sigma2) / (filter_var[j-1] + tau2 + sigma2)
     }
@@ -141,13 +144,13 @@ gibbs_calcium <- function(nrep, y,
     for(j in (n-1):1)
     {
       back_mean = filter_mean[j] + out_gamma[i] * filter_var[j]/(filter_var[j] + tau2) * 
-        (out_c[i+1,j+2] - out_gamma[i] * filter_mean[j] - AA[j])
+        (out_c[i+1,j+2] - out_gamma[i] * filter_mean[j] - AA[j] * out_s[i,j])
       back_var = filter_var[j] - out_gamma[i]^2 * filter_var[j]^2 / (filter_var[j] + tau2)
       out_c[i+1,j+1] = rnorm(1, back_mean, back_var)
     }
     
     # sampling di lambda (precision)
-    z = y - out_gamma[i] * out_c[i+1,1:n] - AA
+    z = y - out_gamma[i] * out_c[i+1,1:n] - AA * out_s[i,]
     ssum = sum((z - mean(z))^2)
     out_lambda[i+1] = rgamma(1, hyp_lambda1 + n/2, 
                              hyp_lambda2 + .5 * ssum + .5 * n * hyp_b2 / (n + hyp_b2) * (mean(z) - hyp_b1)^2 )
@@ -177,49 +180,88 @@ gibbs_calcium <- function(nrep, y,
     # if(runif(1) < alpha) oldgamma = newgamma
     out_gamma[i+1] = oldgamma
     
-    
-    
     # sampling di s
     out_p1[i+1,] = exp(-.5 / sigma2 * (y - out_b[i] - out_gamma[i] * out_c[i,1:n] - AA)^2 ) * p
     out_p0[i+1,] = exp(-.5 / sigma2 * (y - out_b[i] - out_gamma[i] * out_c[i,1:n])^2 ) * (1-p)
-    out_s[i+1,] = out_s[i,] #apply(cbind(out_p0[i+1,], out_p1[i+1,]), 1, function(x) sample(c(0,1), 1, prob = x))
+    out_s[i+1,] = apply(cbind(out_p0[i+1,], out_p1[i+1,]), 1, function(x) sample(c(0,1), 1, prob = x))
     
-    # sampling di A
+    cluster[i+1,] = cluster[i,]
+    cluster[i+1,][out_s[i+1,] == 0] = 0
+    out_A[i+1,] = out_A[i,]
+    
+    # sampling del cluster 
     for(j in which(out_s[i+1,]>0))
     {
       # sampling del cluster
-      clus_tmp = cluster[i,]
+      clus_tmp = cluster[i+1,]
       clus_tmp[j] = NA
+      ## qui va modificato  length(unique(clus_tmp[out_s[i+1,] > 0]))-1)   quando include zeri
+      out_A[i+1,1:(length(unique(clus_tmp[out_s[i+1,] > 0]))-1)] = out_A[i+1, sort(unique(clus_tmp[out_s[i+1,] > 0])) ]
+      clus_tmp[!is.na(clus_tmp) & clus_tmp>0] = as.numeric( factor( clus_tmp[!is.na(clus_tmp) & clus_tmp>0], 
+                                                                    labels = 1:(length(unique(clus_tmp[clus_tmp>0]))-1) ) )
       
       nj = sapply(unique(clus_tmp[-j][clus_tmp[-j]>0]), function(x) sum(clus_tmp[-j][clus_tmp[-j]>0] == x))
-      prob_c = sapply(unique(clus_tmp[-j][clus_tmp[-j]>0]), function(x) dnorm(y[j], mean = out_b[i+1] + out_gamma[i+1] * out_c[i+1,j] + out_A[i,x]) ) *
-        nj / (n-1+xi)
-      prob_new = xi / (n-1+xi) * marg(y = y[j], b = out_b[i+1], c = out_c[i+1,j], gamma = out_gamma[i+1], s = out_s[i+1,j], sigma2 = sigma2, psi2 = 1)
+      prob_c = sapply(unique(clus_tmp[-j][clus_tmp[-j]>0]), 
+                      function(x) dnorm(y[j], mean = out_b[i+1] + out_gamma[i+1] * out_c[i+1,j] + out_A[i+1,x], 
+                                        sd = sqrt(sigma2)) ) * nj / (n-1+xi)
+    
+      prob_new = xi / (n-1+xi) * marg(y = y[j], b = out_b[i+1], c = out_c[i+1,j], gamma = out_gamma[i+1], 
+                                      s = out_s[i+1,j], sigma2 = sigma2, psi2 = 1)
       
       clus_tmp[j] = sample(c(unique(clus_tmp[-j][clus_tmp[-j]>0]), max(unique(clus_tmp[-j][clus_tmp[-j]>0]))+1), 1, prob = c(prob_c, prob_new) )
       
-      clus_tmp[clus_tmp>0] = as.numeric( factor( clus_tmp[clus_tmp>0], labels = 1:length(unique(clus_tmp[clus_tmp>0])) ) )
-      cluster[i+1,] = clus_tmp
+      cluster[i+1, out_s[i+1,]>0] = clus_tmp[out_s[i+1,]>0]
+      if(clus_tmp[j] == max(unique(clus_tmp[-j][clus_tmp[-j]>0]))+1) 
+        {out_A[i+1,clus_tmp[j]] = rtruncnorm( 1, 
+                                                a = 0, b = Inf, 
+                                                mean = psi2 * (y[j] - out_b[i+1] - out_gamma[i+1] * out_c[i+1, j]) / (psi2 + sigma2),
+                                                sd = sqrt(sigma2 * psi2 / (psi2 + sigma2) ) ) }
       
-      # sampling di A
-      nj = sapply(unique(clus_tmp[clus_tmp>0]), function(x) sum(clus_tmp[clus_tmp>0] == x))
-      sumj = sapply(unique(clus_tmp[clus_tmp>0]), function(x) sum(y[clus_tmp == x] - out_b[i+1] - out_gamma[i+1] * out_c[i+1,clus_tmp == x]) )
-      out_A[i+1,1:length(unique(clus_tmp[clus_tmp>0]))] = rtruncnorm( length(unique(clus_tmp[clus_tmp>0])), a = 0, b = Inf,
-                                mean = psi2 * sumj / (nj * psi2 + sigma2), sd = sqrt(sigma2 * psi2 / (nj*psi2 + sigma2) ) )
     }
+    
+    # sampling di A
+    nj = sapply(sort(unique(cluster[i+1,out_s[i+1,]>0])), function(x) sum(cluster[i+1,out_s[i+1,]>0] == x))
+    sumj = sapply(sort(unique(cluster[i+1,out_s[i+1,]>0])), 
+                  function(x) sum(y[cluster[i+1,] == x] - out_b[i+1] - out_gamma[i+1] * out_c[i+1, cluster[i+1,] == x]) )
+    out_A[i+1, 1:length(unique(cluster[i+1,out_s[i+1,]>0]))] = rtruncnorm( length(unique(cluster[i+1,out_s[i+1,]>0])), 
+                                                                           a = 0, b = Inf, mean = psi2 * sumj / (nj * psi2 + sigma2), 
+                                                                           sd = sqrt(sigma2 * psi2 / (nj*psi2 + sigma2) ) )
+
+    
+    # for(j in which(out_s[i+1,]==0))
+    # {
+    #   # sampling del cluster
+    #   clus_tmp = cluster[i+1,]
+    #   clus_tmp[out_s[i+1,] == 0] = 0
+    #   clus_tmp[j] = NA
+    #   
+    #   nj = sapply(unique(clus_tmp[-j][clus_tmp[-j]>0]), function(x) sum(clus_tmp[-j][clus_tmp[-j]>0] == x))
+    #   prob_c = sapply(unique(clus_tmp[-j][clus_tmp[-j]>0]), 
+    #                   function(x) dnorm(y[j], mean = out_b[i+1] + out_gamma[i+1] * out_c[i+1,j] + out_A[i+1,x], sd = sqrt(sigma2)) ) * nj / (n-1+xi)
+    #   
+    #   prob_new = xi / (n-1+xi) * marg(y = y[j], b = out_b[i+1], c = out_c[i+1,j], gamma = out_gamma[i+1], 
+    #                                   s = out_s[i+1,j], sigma2 = sigma2, psi2 = 1)
+    #   
+    #   clus_tmp[j] = sample(c(unique(clus_tmp[-j][clus_tmp[-j]>0]), max(unique(clus_tmp[-j][clus_tmp[-j]>0]))+1), 1, prob = c(prob_c, prob_new) )
+    #   
+    #   # sampling di A
+    #   nj = sapply(unique(clus_tmp[clus_tmp>0]), function(x) sum(clus_tmp[clus_tmp>0] == x))
+    #   sumj = sapply(unique(clus_tmp[clus_tmp>0]), function(x) sum(y[clus_tmp == x] - out_b[i+1] - out_gamma[i+1] * out_c[i+1,clus_tmp == x]) )
+    #   AA[j] = rtruncnorm( length(unique(clus_tmp[clus_tmp>0])), a = 0, b = Inf,
+    #                        mean = psi2 * sumj / (nj * psi2 + sigma2), 
+    #                       sd = sqrt(sigma2 * psi2 / (nj*psi2 + sigma2) ) )[which(unique(clus_tmp[clus_tmp>0])== clus_tmp[j]) ]
+    # }
+    
+    
     
   }
   return(list(c = out_c, s = out_s, lambda = out_lambda, A = out_A, gamma = out_gamma, b = out_b, clus = cluster))
 }
 
 
-marg <- function(y, b, c, gamma, s, sigma2, psi2)
-{
-  2 * dnorm(y, mean = b + gamma * c, sd = sqrt(psi2 + sigma2)) * 
-    (1 - pnorm(0, mean = psi2 / (sigma2 + psi2) * (y-b-gamma*c), sd = sqrt(sigma2 * psi2 / (sigma2 + psi2)) ) )
-}
 
-nrep = 500
+
+nrep = 150
 start <- Sys.time()
 prova <- gibbs_calcium(nrep = nrep, y = y, 
                        lambda_start = 10, b_start = 0,
@@ -231,7 +273,7 @@ end - start
 str(prova)
 
 n = length(y)
-burnin = 1
+burnin = 1:500
 plot(1:nrep, prova$lambda, type = "l", main = "lambda")
 lines(1:nrep, cumsum(prova$lambda)/1:nrep, col = 2)
 #abline(h=10, col = "blue")
