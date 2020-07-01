@@ -1,11 +1,13 @@
+
+
 library(truncnorm)
 
-data <- read.csv("data.csv", header = FALSE)
-str(data)
-head(data)
-plot(1:nrow(data), data$V1, type = "l")
-plot(1:length(data$V1[22000:28000]), data$V1[22000:28000], type = "l")
-y = data$V1[22000:28000]
+# data <- read.csv("data.csv", header = FALSE)
+# str(data)
+# head(data)
+# plot(1:nrow(data), data$V1, type = "l")
+# plot(1:length(data$V1[22000:28000]), data$V1[22000:28000], type = "l")
+# y = data$V1[22000:28000]
 
 ## mixture ##
 sim_data <- function(n, lambda, time_spike, b, gamma, prob, par)
