@@ -33,7 +33,7 @@ data <- sim_data(n = 1000, lambda = 10, time_spike = c(100, 150, 400, 500, 700, 
 
 data <- sim_data(n = 500, lambda = 10, time_spike = c(50,140,180,250,350,420,460), 
                  gamma = 0.8, b = 0,
-                 prob = c(0.4, 0.6), par = c(4, 12))
+                 prob = c(0.4, 0.6), par = c(4, 10))
 
 y = data$y 
 plot(y, type = "l", main = "")
@@ -84,7 +84,7 @@ marg <- function(y, b, c, gamma, s, sigma2, psi2)
 gamma_start = 0.8; b_start = 2
 A_start = 5; tau2 = 0.0001
 lambda_start = 10
-c0 = 0; p = 0.005; xi = 1
+c0 = 0; p = 0.005; alpha = 1
 hyp_A1 = 3; hyp_A2 = 1; hyp_gamma1 = 5; hyp_gamma2 = 2
 hyp_lambda1 = 10; hyp_lambda2 = 1; hyp_b1 = 1; hyp_b2 = 1
 psi2 = 2
@@ -94,7 +94,7 @@ gibbs_calcium <- function(nrep, y,
                           gamma_start = 0.8,  b_start = 2, A_start = 5,
                           tau2 = 0.0001, lambda_start = 10, c0 = 0,
                           p = 0.005, 
-                          xi = 1, psi2 = 2,
+                          alpha = 1, psi2 = 2,
                           hyp_A1 = 3, hyp_A2 = 1, hyp_gamma1 = 5, hyp_gamma2 = 2,
                           hyp_lambda1 = 10, hyp_lambda2 = 1, hyp_b1 = 1, hyp_b2 = 1,
                           eps_gamma, eps_A)
@@ -168,7 +168,7 @@ gibbs_calcium <- function(nrep, y,
     # # MH per gamma: random walk
     oldgamma = out_gamma[i] 
     newgamma = oldgamma + runif(1, -eps_gamma, eps_gamma)
-    alpha = exp( logpost(y = y, cc = out_c[i+1,1:n], s = out_s[i,],
+    ratio = exp( logpost(y = y, cc = out_c[i+1,1:n], s = out_s[i,],
                          A = AA, gamma = newgamma,
                          b = out_b[i+1], lambda = out_lambda[i+1],
                          hyp_gamma1 = hyp_gamma1, hyp_gamma2 = hyp_gamma2) -
@@ -176,7 +176,7 @@ gibbs_calcium <- function(nrep, y,
                           A = AA, gamma = oldgamma,
                           b = out_b[i+1], lambda = out_lambda[i+1],
                           hyp_gamma1 = hyp_gamma1, hyp_gamma2 = hyp_gamma2) )
-    if(runif(1) < alpha) oldgamma = newgamma
+    if(runif(1) < ratio) oldgamma = newgamma
     out_gamma[i+1] = oldgamma
     
     # sampling di s
@@ -204,9 +204,9 @@ gibbs_calcium <- function(nrep, y,
       nj = sapply(sort(unique(clus_tmp[!is.na(clus_tmp) & clus_tmp>0])), function(x) sum(clus_tmp[-j][clus_tmp[-j]>0] == x))
       prob_c = sapply(sort(unique(clus_tmp[-j][clus_tmp[-j]>0])), 
                       function(x) dnorm(y[out_s[i+1,]>0][j], mean = out_b[i+1] + out_gamma[i+1] * out_c[i+1,j] + out_A[i+1,x], 
-                                        sd = sqrt(sigma2)) ) * nj / (n-1+xi)
+                                        sd = sqrt(sigma2)) ) * nj / (n-1+alpha)
     
-      prob_new = xi / (n-1+xi) * marg(y = y[out_s[i+1,]>0][j], b = out_b[i+1], c = out_c[i+1,j], gamma = out_gamma[i+1], 
+      prob_new = alpha / (n-1+alpha) * marg(y = y[out_s[i+1,]>0][j], b = out_b[i+1], c = out_c[i+1,j], gamma = out_gamma[i+1], 
                                       s = out_s[i+1,j], sigma2 = sigma2, psi2 = 1)
       
       clus_tmp[j] = sample( 1:(max(unique(clus_tmp[-j][clus_tmp[-j]>0]))+1), 1, prob = c(prob_c, prob_new) )
@@ -237,9 +237,9 @@ gibbs_calcium <- function(nrep, y,
       nj = sapply(sort(unique(clus_tmp[-1])), function(x) sum(clus_tmp[-1] == x))
       prob_c = sapply(sort(unique(clus_tmp[-1])),
                       function(x) dnorm(y[j], mean = out_b[i+1] + out_gamma[i+1] * out_c[i+1,j] + out_A[i+1,x], 
-                                        sd = sqrt(sigma2)) ) * nj / (n-1+xi)
+                                        sd = sqrt(sigma2)) ) * nj / (n-1+alpha)
 
-      # prob_new = xi / (n-1+xi) * marg(y = y[j], b = out_b[i+1], c = out_c[i+1,j], gamma = out_gamma[i+1],
+      # prob_new = alpha / (n-1+alpha) * marg(y = y[j], b = out_b[i+1], c = out_c[i+1,j], gamma = out_gamma[i+1],
       #                                 s = out_s[i+1,j], sigma2 = sigma2, psi2 = 1)
 
       clus_tmp[1] = sample(1:(max(unique(clus_tmp[-1][clus_tmp[-1]>0]))), 1, prob = c(prob_c) )
@@ -261,7 +261,7 @@ gibbs_calcium <- function(nrep, y,
 
 
 
-nrep = 1000
+nrep = 2000
 start <- Sys.time()
 prova <- gibbs_calcium(nrep = nrep, y = y, 
                        lambda_start = 10, b_start = 0,
@@ -276,11 +276,11 @@ n = length(y)
 burnin = 1:500
 plot(1:nrep, prova$lambda, type = "l", main = "lambda")
 lines(1:nrep, cumsum(prova$lambda)/1:nrep, col = 2)
-#abline(h=10, col = "blue")
+abline(h=10, col = "blue")
 
 plot(1:nrep, prova$b, type = "l", main = "b")
 lines(1:nrep, cumsum(prova$b)/1:nrep, col = 2)
-abline(h=2, col = "blue")
+abline(h=0, col = "blue")
 
 plot(1:nrep, prova$gamma, type = "l", main = "gamma")
 lines(1:nrep, cumsum(prova$gamma)/1:nrep, col = 2)
@@ -298,7 +298,7 @@ plot(1:n, y, type = "l")
 AA = matrix(0,nrep,n)
 AA[prova$clus>0] = prova$A[prova$clus[prova$clus>0]]
 lines(1:n, mean(prova$gamma[-burnin]) * colMeans(prova$c[-burnin,1:n]) + mean(prova$b[-burnin]) + 
-        (colMeans(prova$s[-burnin,])>0.9) * colMeans(AA[-burnin,]),
+        (colMeans(prova$s[-burnin,])>0.6) * colMeans(AA[-burnin,]),
      col = 2)
 
 str(AA)
@@ -306,10 +306,10 @@ str(AA)
 n = length(y)
 plot(1:n, y, type = "l")
 lines(1:n, colMeans(prova$c[-burnin,1:n]) + mean(prova$b[-burnin]), col = "blue", lty = 2)
+abline(v = which(colMeans(prova$s[-burnin,])>0.6), lty = 3, col = 2)
 
 
-
-which(colMeans(prova$s[-burnin,])>0.9)
+which(colMeans(prova$s[-burnin,])>0.6)
 #c(50,140,180,250,350,420,460)
 
 
