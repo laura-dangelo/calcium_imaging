@@ -32,7 +32,7 @@ data <- sim_data(n = 1000, lambda = 10, time_spike = c(100, 150, 400, 500, 700, 
                  prob = c(0.1, 0.7, 0.2), par = c(0.6, 1, 2))
 
 data <- sim_data(n = 500, lambda = 10, time_spike = c(50,140,180,250,350,420,460), 
-                 gamma = 0.8, b = 2,
+                 gamma = 0.8, b = 0,
                  prob = c(0.4, 0.6), par = c(4, 12))
 
 y = data$y 
@@ -42,10 +42,10 @@ data$k
 data$A[data$A>0]
 
 
-loglik <- function(y, cc, c_0, s, A, clus, b, gamma, lambda)
+loglik <- function(y, cc, s, A, b, gamma, lambda)
 {
   n = length(y)
-  sum(dnorm(y, mean = b + gamma * c(c_0, cc[1:(n-1)]) + A[clus] * s, sd = 1/sqrt(lambda), log = TRUE))
+  sum(dnorm(y, mean = b + gamma * cc + A * s, sd = 1/sqrt(lambda), log = TRUE))
 }
 
 
@@ -53,18 +53,20 @@ loglik <- function(y, cc, c_0, s, A, clus, b, gamma, lambda)
 # modificare!!!
 
 logprior_gamma <- function(gamma, hyp_gamma1, hyp_gamma2) dbeta(gamma, hyp_gamma1, hyp_gamma2, log = TRUE)
-logprior_b_lambda <- function(b, lambda, hyp_b1, hyp_b2, hyp_lambda1, hyp_lambda2)
-{
-  dnorm(b, mean = hyp_b1, sd = 1 / sqrt(hyp_b2 * lambda), log = TRUE) + dgamma(lambda, hyp_lambda1, hyp_lambda2, log = TRUE)
-}
+# logprior_b_lambda <- function(b, lambda, hyp_b1, hyp_b2, hyp_lambda1, hyp_lambda2)
+# {
+#   dnorm(b, mean = hyp_b1, sd = 1 / sqrt(hyp_b2 * lambda), log = TRUE) + dgamma(lambda, hyp_lambda1, hyp_lambda2, log = TRUE)
+# }
 
-logpost <- function(y, cc, c_0, s, A, b, gamma, lambda, 
-                    hyp_A1, hyp_A2, hyp_gamma1, hyp_gamma2, 
-                    hyp_lambda1, hyp_lambda2, hyp_b1, hyp_b2)
+logpost <- function(y, cc, s, A, b, gamma, lambda, 
+                    # hyp_A1, hyp_A2, 
+                    hyp_gamma1, hyp_gamma2
+                    # hyp_lambda1, hyp_lambda2, hyp_b1, hyp_b2
+                    )
 {
-  loglik(y, cc, c_0, s, A, b, gamma, lambda) + logprior_A(A, hyp_A1, hyp_A2) + 
-    logprior_gamma(gamma, hyp_gamma1, hyp_gamma2) + 
-    logprior_b_lambda(b, lambda, hyp_b1, hyp_b2, hyp_lambda1, hyp_lambda2)
+  loglik(y = y, cc = cc, s = s, A = A, b = b, gamma = gamma, lambda = lambda) + #logprior_A(A, hyp_A1, hyp_A2) + 
+    logprior_gamma(gamma, hyp_gamma1, hyp_gamma2)# + 
+   # logprior_b_lambda(b, lambda, hyp_b1, hyp_b2, hyp_lambda1, hyp_lambda2)
 }
 
 
@@ -164,23 +166,17 @@ gibbs_calcium <- function(nrep, y,
     #out_b[i+1] = out_b[i]
     
     # # MH per gamma: random walk
-    oldgamma = out_gamma[i] # <<<- modificare prior su A
-    # newgamma = oldgamma + runif(1, -eps_gamma, eps_gamma)
-    # alpha = exp( logpost(y = y, cc = out_c[i+1,], c_0 = c0, s = out_s[i+1,],
-    #                      A = out_A[i], gamma = newgamma, 
-    #                      b = out_b[i+1], lambda = out_lambda[i+1],
-    #                      hyp_A1 = hyp_A1, hyp_A2 = hyp_A2, 
-    #                      hyp_gamma1 = hyp_gamma1, hyp_gamma2 = hyp_gamma2, 
-    #                      hyp_lambda1 = hyp_lambda1, hyp_lambda2 = hyp_lambda2, 
-    #                      hyp_b1 = hyp_b1, hyp_b2 = hyp_b2) -
-    #               logpost(y = y, cc = out_c[i+1,], c_0 = c0, s = out_s[i+1,],
-    #                       A = out_A[i], gamma = oldgamma, 
-    #                       b = out_b[i+1], lambda = out_lambda[i+1],
-    #                       hyp_A1 = hyp_A1, hyp_A2 = hyp_A2, 
-    #                       hyp_gamma1 = hyp_gamma1, hyp_gamma2 = hyp_gamma2, 
-    #                       hyp_lambda1 = hyp_lambda1, hyp_lambda2 = hyp_lambda2, 
-    #                       hyp_b1 = hyp_b1, hyp_b2 = hyp_b2) )
-    # if(runif(1) < alpha) oldgamma = newgamma
+    oldgamma = out_gamma[i] 
+    newgamma = oldgamma + runif(1, -eps_gamma, eps_gamma)
+    alpha = exp( logpost(y = y, cc = out_c[i+1,1:n], s = out_s[i,],
+                         A = AA, gamma = newgamma,
+                         b = out_b[i+1], lambda = out_lambda[i+1],
+                         hyp_gamma1 = hyp_gamma1, hyp_gamma2 = hyp_gamma2) -
+                  logpost(y = y, cc = out_c[i+1,1:n], s = out_s[i,],
+                          A = AA, gamma = oldgamma,
+                          b = out_b[i+1], lambda = out_lambda[i+1],
+                          hyp_gamma1 = hyp_gamma1, hyp_gamma2 = hyp_gamma2) )
+    if(runif(1) < alpha) oldgamma = newgamma
     out_gamma[i+1] = oldgamma
     
     # sampling di s
@@ -301,18 +297,19 @@ lines(1:nrep, cumsum(prova$A[,2])/1:nrep, col = 2)
 plot(1:n, y, type = "l")
 AA = matrix(0,nrep,n)
 AA[prova$clus>0] = prova$A[prova$clus[prova$clus>0]]
-lines(1:n, mean(prova$b[-burnin]) + mean(prova$gamma[-burnin]) * colMeans(prova$c[-burnin,1:n]) + 
-        colMeans(prova$s[-burnin,] * AA[-burnin,]),
+lines(1:n, mean(prova$gamma[-burnin]) * colMeans(prova$c[-burnin,1:n]) + mean(prova$b[-burnin]) + 
+        (colMeans(prova$s[-burnin,])>0.9) * colMeans(AA[-burnin,]),
      col = 2)
 
-
+str(AA)
 
 n = length(y)
 plot(1:n, y, type = "l")
 lines(1:n, colMeans(prova$c[-burnin,1:n]) + mean(prova$b[-burnin]), col = "blue", lty = 2)
 
 
-which(colMeans(prova$s[-burnin,])>0.5)
+
+which(colMeans(prova$s[-burnin,])>0.9)
 #c(50,140,180,250,350,420,460)
 
 
