@@ -42,31 +42,23 @@ data$k
 data$A[data$A>0]
 
 
+#---------------------# #---------------------# #---------------------# #---------------------# 
+#---------------------# #---------------------# #---------------------# #---------------------# 
+#-----# #-----# some functions #-----# #-----# 
+
 loglik <- function(y, cc, s, A, b, gamma, lambda)
 {
   n = length(y)
   sum(dnorm(y, mean = b + gamma * cc + A * s, sd = 1/sqrt(lambda), log = TRUE))
 }
 
-
-#logprior_A <- function(A, hyp_A1, hyp_A2) dgamma(A, hyp_A1, hyp_A2, log = TRUE)
-# modificare!!!
-
 logprior_gamma <- function(gamma, hyp_gamma1, hyp_gamma2) dbeta(gamma, hyp_gamma1, hyp_gamma2, log = TRUE)
-# logprior_b_lambda <- function(b, lambda, hyp_b1, hyp_b2, hyp_lambda1, hyp_lambda2)
-# {
-#   dnorm(b, mean = hyp_b1, sd = 1 / sqrt(hyp_b2 * lambda), log = TRUE) + dgamma(lambda, hyp_lambda1, hyp_lambda2, log = TRUE)
-# }
 
 logpost <- function(y, cc, s, A, b, gamma, lambda, 
-                    # hyp_A1, hyp_A2, 
-                    hyp_gamma1, hyp_gamma2
-                    # hyp_lambda1, hyp_lambda2, hyp_b1, hyp_b2
-                    )
+                    hyp_gamma1, hyp_gamma2)
 {
-  loglik(y = y, cc = cc, s = s, A = A, b = b, gamma = gamma, lambda = lambda) + #logprior_A(A, hyp_A1, hyp_A2) + 
-    logprior_gamma(gamma, hyp_gamma1, hyp_gamma2)# + 
-   # logprior_b_lambda(b, lambda, hyp_b1, hyp_b2, hyp_lambda1, hyp_lambda2)
+  loglik(y = y, cc = cc, s = s, A = A, b = b, gamma = gamma, lambda = lambda) +
+    logprior_gamma(gamma, hyp_gamma1, hyp_gamma2)
 }
 
 
@@ -80,6 +72,21 @@ marg <- function(y, b, c, gamma, s, sigma2, psi2)
     (1 - pnorm(0, mean = psi2 / (sigma2 + psi2) * (y-b-gamma*c), sd = sqrt(sigma2 * psi2 / (sigma2 + psi2)) ) )
 }
 
+num <- function(k, t)
+{
+  out = 0
+  if(k >= t) out = gamma(k+1)/gamma(k-t+1)
+  return(out)
+}
+
+v <- function(n, t, alpha, pois_mean, trunc = 100)
+{
+  tmp = sapply(1:trunc, function(k) num(k, t) / (gamma(alpha*k + n)/gamma(alpha*k)) * dpois(k-1, pois_mean) )
+  sum(tmp[!is.nan(tmp)])
+}
+
+v(n=10, t = 3, alpha = 1, pois_mean = 2, trunc = 500)
+
 
 gamma_start = 0.8; b_start = 2
 A_start = 5; tau2 = 0.0001
@@ -90,14 +97,21 @@ hyp_lambda1 = 10; hyp_lambda2 = 1; hyp_b1 = 1; hyp_b2 = 1
 psi2 = 2
 
 nrep=50
-gibbs_calcium <- function(nrep, y,
-                          gamma_start = 0.8,  b_start = 2, A_start = 5,
-                          tau2 = 0.0001, lambda_start = 10, c0 = 0,
-                          p = 0.005, 
-                          alpha = 1, psi2 = 2,
-                          hyp_A1 = 3, hyp_A2 = 1, hyp_gamma1 = 5, hyp_gamma2 = 2,
+gibbs_calcium <- function(nrep, y, 
+                          c0 = 0, tau2 = 0.0001, 
+                          # hyperparameters
+                          pois_mean = 2, # param of Pois on the number of clusters
+                          alpha = 1, # Dirichlet param: ~ Dir_k(alpha,...,alpha)
+                          p = 0.005, # prior prob of a spike
+                          psi2 = 2, # base measure variance (half normal on A)
+                          hyp_gamma1 = 5, hyp_gamma2 = 2,
                           hyp_lambda1 = 10, hyp_lambda2 = 1, hyp_b1 = 1, hyp_b2 = 1,
-                          eps_gamma, eps_A)
+                          # starting point
+                          gamma_start = 0.8, b_start = 2, A_start = 5,
+                          lambda_start = 10, 
+                          # MH step
+                          eps_gamma,
+                          trunc = 500)
 {
   n = length(y)
   # creo matrici di output
@@ -202,9 +216,12 @@ gibbs_calcium <- function(nrep, y,
       nj = sapply(sort(unique(clus_tmp[!is.na(clus_tmp) & clus_tmp>0])), function(x) sum(clus_tmp[-j][clus_tmp[-j]>0] == x))
       prob_c = sapply(sort(unique(clus_tmp[-j][clus_tmp[-j]>0])), 
                       function(x) dnorm(y[out_s[i+1,]>0][j], mean = out_b[i+1] + out_gamma[i+1] * out_c[i+1,j] + out_A[i+1,x], 
-                                        sd = sqrt(sigma2)) ) * nj / (n-1+alpha)
+                                        sd = sqrt(sigma2)) ) * (nj + alpha) 
     
-      prob_new = alpha / (n-1+alpha) * marg(y = y[out_s[i+1,]>0][j], b = out_b[i+1], c = out_c[i+1,j], gamma = out_gamma[i+1], 
+      v_ratio = v(n = n-1, t = length(nj)+1, alpha = alpha, pois_mean = pois_mean, trunc = trunc) / 
+        v(n = n-1, t = length(nj), alpha = alpha, pois_mean = pois_mean, trunc = trunc)
+      
+      prob_new = v_ratio * alpha  * marg(y = y[out_s[i+1,]>0][j], b = out_b[i+1], c = out_c[i+1,j], gamma = out_gamma[i+1], 
                                       s = out_s[i+1,j], sigma2 = sigma2, psi2 = 1)
       
       clus_tmp[j] = sample( 1:(max(unique(clus_tmp[-j][clus_tmp[-j]>0]))+1), 1, prob = c(prob_c, prob_new) )
@@ -226,8 +243,9 @@ gibbs_calcium <- function(nrep, y,
     out_A[i+1, 1:length(unique(cluster[i+1,out_s[i+1,]>0]))] = rtruncnorm( length(unique(cluster[i+1,out_s[i+1,]>0])), 
                                                                            a = 0, b = Inf, mean = psi2 * sumj / (nj * psi2 + sigma2), 
                                                                            sd = sqrt(sigma2 * psi2 / (nj*psi2 + sigma2) ) )
-
     AA[out_s[i+1,]==1] = out_A[i+1, cluster[i+1, out_s[i+1,]==1]]
+    
+    # finto Polya urn sulle altre osservazioni
     for(j in which(out_s[i+1,]==0))
     {
       clus_tmp = c(NA, cluster[i+1, out_s[i+1,]==1])
@@ -235,7 +253,7 @@ gibbs_calcium <- function(nrep, y,
       nj = sapply(sort(unique(clus_tmp[-1])), function(x) sum(clus_tmp[-1] == x))
       prob_c = sapply(sort(unique(clus_tmp[-1])),
                       function(x) dnorm(y[j], mean = out_b[i+1] + out_gamma[i+1] * out_c[i+1,j] + out_A[i+1,x], 
-                                        sd = sqrt(sigma2)) ) * nj / (n-1+alpha)
+                                        sd = sqrt(sigma2)) ) * (nj + alpha) 
 
       # prob_new = alpha / (n-1+alpha) * marg(y = y[j], b = out_b[i+1], c = out_c[i+1,j], gamma = out_gamma[i+1],
       #                                 s = out_s[i+1,j], sigma2 = sigma2, psi2 = 1)
@@ -259,13 +277,13 @@ gibbs_calcium <- function(nrep, y,
 
 
 
-nrep = 2000
+nrep = 200
 start <- Sys.time()
 prova <- gibbs_calcium(nrep = nrep, y = y, 
+                       alpha = 1,
                        lambda_start = 10, b_start = 0,
                        gamma_start = 0.8, A_start = 3,
-                       eps_gamma = 0.05, 
-                       eps_A = 0.17)
+                       eps_gamma = 0.05)
 end <- Sys.time()
 end - start
 str(prova)
