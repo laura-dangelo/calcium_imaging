@@ -95,6 +95,7 @@ c0 = 0; p = 0.005; alpha = 1
 hyp_A1 = 3; hyp_A2 = 1; hyp_gamma1 = 5; hyp_gamma2 = 2
 hyp_lambda1 = 10; hyp_lambda2 = 1; hyp_b1 = 1; hyp_b2 = 1
 psi2 = 2
+eps_gamma = 0.3
 
 nrep=50
 gibbs_calcium <- function(nrep, y, 
@@ -218,8 +219,8 @@ gibbs_calcium <- function(nrep, y,
                       function(x) dnorm(y[out_s[i+1,]>0][j], mean = out_b[i+1] + out_gamma[i+1] * out_c[i+1,j] + out_A[i+1,x], 
                                         sd = sqrt(sigma2)) ) * (nj + alpha) 
     
-      v_ratio = v(n = n-1, t = length(nj)+1, alpha = alpha, pois_mean = pois_mean, trunc = trunc) / 
-        v(n = n-1, t = length(nj), alpha = alpha, pois_mean = pois_mean, trunc = trunc)
+      v_ratio = v(n = sum(out_s[i+1,]>0)-1, t = length(nj)+1, alpha = alpha, pois_mean = pois_mean, trunc = trunc) / 
+        v(n = sum(out_s[i+1,]>0)-1, t = length(nj), alpha = alpha, pois_mean = pois_mean, trunc = trunc)
       
       prob_new = v_ratio * alpha  * marg(y = y[out_s[i+1,]>0][j], b = out_b[i+1], c = out_c[i+1,j], gamma = out_gamma[i+1], 
                                       s = out_s[i+1,j], sigma2 = sigma2, psi2 = 1)
@@ -277,13 +278,13 @@ gibbs_calcium <- function(nrep, y,
 
 
 
-nrep = 200
+nrep = 1000
 start <- Sys.time()
 prova <- gibbs_calcium(nrep = nrep, y = y, 
                        alpha = 1,
                        lambda_start = 10, b_start = 0,
                        gamma_start = 0.8, A_start = 3,
-                       eps_gamma = 0.05)
+                       eps_gamma = 0.03)
 end <- Sys.time()
 end - start
 str(prova)
@@ -319,10 +320,7 @@ lines(1:n, mean(prova$gamma[-burnin]) * colMeans(prova$c[-burnin,1:n]) + mean(pr
 
 str(AA)
 
-n = length(y)
-plot(1:n, y, type = "l")
-lines(1:n, colMeans(prova$c[-burnin,1:n]) + mean(prova$b[-burnin]), col = "blue", lty = 2)
-abline(v = which(colMeans(prova$s[-burnin,])>0.6), lty = 3, col = 2)
+abline(v = which(colMeans(prova$s[-burnin,])>0.6), lty = 3, col = "salmon")
 
 
 which(colMeans(prova$s[-burnin,])>0.6)
