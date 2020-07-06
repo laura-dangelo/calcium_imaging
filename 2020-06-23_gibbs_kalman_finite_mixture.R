@@ -27,11 +27,11 @@ sim_data <- function(n, lambda, time_spike, b, gamma, prob, par)
   return(list("y" = b + c + rnorm(n, 0, 1/sqrt(lambda)), "c" = c, "s" = s, "A" = A, "k" = k))
 }
 
-data <- sim_data(n = 1000, lambda = 10, time_spike = c(100, 150, 400, 500, 700, 300, 600,850), 
+data <- sim_data(n = 1000, lambda = 10, time_spike = c(100,101, 150, 400, 500, 700,203, 300, 600,850), 
                  gamma = 0.8, b = 2,
-                 prob = c(0.1, 0.7, 0.2), par = c(0.6, 1, 2))
+                 prob = c(0.1, 0.7, 0.2), par = c(4,10,7))
 
-data <- sim_data(n = 500, lambda = 10, time_spike = c(50,140,180,250,350,420,460), 
+data <- sim_data(n = 500, lambda = 10, time_spike = c(50,140,180,250,350,420,460),
                  gamma = 0.8, b = 0,
                  prob = c(0.4, 0.6), par = c(4, 10))
 
@@ -89,15 +89,19 @@ v(n=10, t = 3, alpha = 1, pois_mean = 2, trunc = 500)
 
 
 gamma_start = 0.8; b_start = 2
-A_start = 5; tau2 = 0.0001
+A_start = 13; tau2 = 0.0001
 lambda_start = 10
-c0 = 0; p = 0.005; alpha = 1
+c0 = 0; p = 0.05; alpha = 1
 hyp_A1 = 3; hyp_A2 = 1; hyp_gamma1 = 5; hyp_gamma2 = 2
 hyp_lambda1 = 10; hyp_lambda2 = 1; hyp_b1 = 1; hyp_b2 = 1
 psi2 = 2
 eps_gamma = 0.3
 
 nrep=50
+trunc = 500
+pois_mean = 2
+
+
 gibbs_calcium <- function(nrep, y, 
                           c0 = 0, tau2 = 0.0001, 
                           # hyperparameters
@@ -144,6 +148,15 @@ gibbs_calcium <- function(nrep, y,
   
   AA = rep(A_start, n) # contiene un vettore di lunghezza n che vale A_Zj anche quando s=0
 
+  
+  ############
+  out_s[1,] = data$s
+  cluster[1,] = 0
+  cluster[1,data$s == 1] = data$k
+  out_A[1,1:2] = c(4,10)
+  AA = rep(3,n)
+  AA[data$s == 1] = out_A[1,cluster[1,data$s == 1]]
+  
   for(i in 1:(nrep-1))
   {
     sigma2 = 1/out_lambda[i]
@@ -196,7 +209,8 @@ gibbs_calcium <- function(nrep, y,
     out_p1[i+1,] = exp(-.5 / sigma2 * (y - out_b[i] - out_gamma[i] * out_c[i,1:n] - AA)^2 ) * p
     out_p0[i+1,] = exp(-.5 / sigma2 * (y - out_b[i] - out_gamma[i] * out_c[i,1:n])^2 ) * (1-p)
     out_s[i+1,] = apply(cbind(out_p0[i+1,], out_p1[i+1,]), 1, function(x) sample(c(0,1), 1, prob = x))
-    
+    out_s[i+1,] = out_s[i,]
+     
     cluster[i+1,] = cluster[i,]
     cluster[i+1,][out_s[i+1,] == 0] = 0
     out_A[i+1,] = out_A[i,]
@@ -242,8 +256,9 @@ gibbs_calcium <- function(nrep, y,
     sumj = sapply(sort(unique(cluster[i+1,out_s[i+1,]>0])), 
                   function(x) sum(y[cluster[i+1,] == x] - out_b[i+1] - out_gamma[i+1] * out_c[i+1, cluster[i+1,] == x]) )
     out_A[i+1, 1:length(unique(cluster[i+1,out_s[i+1,]>0]))] = rtruncnorm( length(unique(cluster[i+1,out_s[i+1,]>0])), 
-                                                                           a = 0, b = Inf, mean = psi2 * sumj / (nj * psi2 + sigma2), 
-                                                                           sd = sqrt(sigma2 * psi2 / (nj*psi2 + sigma2) ) )
+                                                                           a = 0, b = Inf, 
+                                                                           mean = psi2 * sumj / (nj * psi2 + sigma2), 
+                                                                           sd = sqrt(sigma2 * psi2 / (nj * psi2 + sigma2) ) )
     AA[out_s[i+1,]==1] = out_A[i+1, cluster[i+1, out_s[i+1,]==1]]
     
     # finto Polya urn sulle altre osservazioni
@@ -256,17 +271,20 @@ gibbs_calcium <- function(nrep, y,
                       function(x) dnorm(y[j], mean = out_b[i+1] + out_gamma[i+1] * out_c[i+1,j] + out_A[i+1,x], 
                                         sd = sqrt(sigma2)) ) * (nj + alpha) 
 
-      # prob_new = alpha / (n-1+alpha) * marg(y = y[j], b = out_b[i+1], c = out_c[i+1,j], gamma = out_gamma[i+1],
-      #                                 s = out_s[i+1,j], sigma2 = sigma2, psi2 = 1)
-
-      clus_tmp[1] = sample(1:(max(unique(clus_tmp[-1][clus_tmp[-1]>0]))), 1, prob = c(prob_c) )
-      AA[j] = out_A[i+1, clus_tmp[1]]
+      v_ratio = v(n = sum(out_s[i+1,]>0), t = length(nj)+1, alpha = alpha, pois_mean = pois_mean, trunc = trunc) / 
+        v(n = sum(out_s[i+1,]>0), t = length(nj), alpha = alpha, pois_mean = pois_mean, trunc = trunc)
       
-      # sampling di A
-      # if(clus_tmp[1] == max(unique(clus_tmp[-1])+1) )
-      # AA[j] = rtruncnorm( 1, a = 0, b = Inf,
-      #                      mean = psi2 * (y[j] - out_b[i+1] - out_gamma[i+1] * out_c[i+1, j]) / (psi2 + sigma2),
-      #                       sd = sqrt(sigma2 * psi2 / (psi2 + sigma2) ) ) 
+      prob_new = v_ratio * alpha  * marg(y = y[j], b = out_b[i+1], c = out_c[i+1,j], gamma = out_gamma[i+1], 
+                                         s = out_s[i+1,j], sigma2 = sigma2, psi2 = 1)
+      
+      clus_tmp[1] = sample(1:(length(unique(clus_tmp[-1]))+1), 1, prob = c(prob_c, prob_new) )
+      
+      #sampling di A
+      if(clus_tmp[1] == max(unique(clus_tmp[-1])+1) ) {AA[j] = rtruncnorm( 1, a = 0, b = Inf,
+                           mean = psi2 * (y[j] - out_b[i+1] - out_gamma[i+1] * out_c[i+1, j]) / (psi2 + sigma2),
+                            sd = sqrt(sigma2 * psi2 / (psi2 + sigma2) ) )}
+      else {AA[j] = out_A[i+1, clus_tmp[1]]}
+      
     }
     
     
@@ -278,19 +296,20 @@ gibbs_calcium <- function(nrep, y,
 
 
 
-nrep = 1000
+nrep = 500
 start <- Sys.time()
 prova <- gibbs_calcium(nrep = nrep, y = y, 
-                       alpha = 1,
+                       alpha = 1, 
+                       trunc = 300, pois_mean = 2,
                        lambda_start = 10, b_start = 0,
-                       gamma_start = 0.8, A_start = 3,
-                       eps_gamma = 0.03)
+                       gamma_start = 0.8, A_start = 15,
+                       eps_gamma = 0.02)
 end <- Sys.time()
 end - start
 str(prova)
 
 n = length(y)
-burnin = 1:500
+burnin = 1:30
 plot(1:nrep, prova$lambda, type = "l", main = "lambda")
 lines(1:nrep, cumsum(prova$lambda)/1:nrep, col = 2)
 abline(h=10, col = "blue")
@@ -313,17 +332,27 @@ lines(1:nrep, cumsum(prova$A[,2])/1:nrep, col = 2)
 
 plot(1:n, y, type = "l")
 AA = matrix(0,nrep,n)
-AA[prova$clus>0] = prova$A[prova$clus[prova$clus>0]]
-lines(1:n, mean(prova$gamma[-burnin]) * colMeans(prova$c[-burnin,1:n]) + mean(prova$b[-burnin]) + 
-        (colMeans(prova$s[-burnin,])>0.6) * colMeans(AA[-burnin,]),
-     col = 2)
+for(i in 1:nrep)
+{
+  AA[i,spikes == 1] = prova$A[i, prova$clus[i,spikes>0]]
+}
 
-str(AA)
+calcium = matrix(0, nrep, n+1)
+for(i in 1:nrep)
+{
+  for(j in 2:(n+1))
+  {
+    calcium[i,j] = calcium[i,j-1] * mean(prova$gamma[-burnin]) + AA[i,j-1]
+  }
+}
+
+plot(1:n, y, type = "l")
+lines(1:n, mean(prova$b[-burnin]) + colMeans(calcium)[2:(n+1)], col = "turquoise3", lwd = 1.8)
 
 abline(v = which(colMeans(prova$s[-burnin,])>0.6), lty = 3, col = "salmon")
 
 
-which(colMeans(prova$s[-burnin,])>0.6)
+which(colMeans(prova$s[-burnin,])>0.7)
 #c(50,140,180,250,350,420,460)
 
 
