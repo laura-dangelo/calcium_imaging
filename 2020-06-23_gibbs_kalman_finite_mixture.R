@@ -18,7 +18,7 @@ sim_data <- function(n, lambda, time_spike, b, gamma, prob, par)
   s[time_spike] = 1
   
   k <- sample(1:length(prob), sum(s), prob, replace = TRUE)
-  A[time_spike] <- rnorm(sum(s), par[k], 0.8)
+  A[time_spike] <- rnorm(sum(s), par[k], 0.5)
   
   for(i in 2:n)
   {
@@ -27,13 +27,13 @@ sim_data <- function(n, lambda, time_spike, b, gamma, prob, par)
   return(list("y" = b + c + rnorm(n, 0, 1/sqrt(lambda)), "c" = c, "s" = s, "A" = A, "k" = k))
 }
 
-data <- sim_data(n = 1000, lambda = 10, time_spike = c(100,101, 150, 400, 500, 700,203, 300, 600,850), 
+data <- sim_data(n = 1000, lambda = 10, time_spike = c(100, 150, 200, 300, 400, 450, 500, 700, 850), 
                  gamma = 0.8, b = 2,
-                 prob = c(0.1, 0.7, 0.2), par = c(4,10,7))
+                 prob = c(0.3, 0.5, 0.2), par = c(4,12,7))
 
-data <- sim_data(n = 500, lambda = 10, time_spike = c(50,140,180,250,350,420,460),
-                 gamma = 0.8, b = 0,
-                 prob = c(0.4, 0.6), par = c(4, 10))
+# data <- sim_data(n = 500, lambda = 10, time_spike = c(50,140,180,250,350,420,460),
+#                  gamma = 0.8, b = 0,
+#                  prob = c(0.4, 0.6), par = c(4, 10))
 
 y = data$y 
 plot(y, type = "l", main = "")
@@ -153,7 +153,7 @@ gibbs_calcium <- function(nrep, y,
   out_s[1,] = data$s
   cluster[1,] = 0
   cluster[1,data$s == 1] = data$k
-  out_A[1,1:2] = c(4,10)
+  out_A[1,1:3] = c(4,12,7)
   AA = rep(3,n)
   AA[data$s == 1] = out_A[1,cluster[1,data$s == 1]]
   
@@ -209,7 +209,6 @@ gibbs_calcium <- function(nrep, y,
     out_p1[i+1,] = exp(-.5 / sigma2 * (y - out_b[i] - out_gamma[i] * out_c[i,1:n] - AA)^2 ) * p
     out_p0[i+1,] = exp(-.5 / sigma2 * (y - out_b[i] - out_gamma[i] * out_c[i,1:n])^2 ) * (1-p)
     out_s[i+1,] = apply(cbind(out_p0[i+1,], out_p1[i+1,]), 1, function(x) sample(c(0,1), 1, prob = x))
-    out_s[i+1,] = out_s[i,]
      
     cluster[i+1,] = cluster[i,]
     cluster[i+1,][out_s[i+1,] == 0] = 0
@@ -287,8 +286,6 @@ gibbs_calcium <- function(nrep, y,
       
     }
     
-    
-    
   }
   return(list(c = out_c, s = out_s, lambda = out_lambda, A = out_A, gamma = out_gamma, b = out_b, clus = cluster))
 }
@@ -296,20 +293,21 @@ gibbs_calcium <- function(nrep, y,
 
 
 
-nrep = 500
+nrep = 200
 start <- Sys.time()
 prova <- gibbs_calcium(nrep = nrep, y = y, 
                        alpha = 1, 
                        trunc = 300, pois_mean = 2,
-                       lambda_start = 10, b_start = 0,
+                       p = 0.05,
+                       lambda_start = 10, b_start = 2,
                        gamma_start = 0.8, A_start = 15,
-                       eps_gamma = 0.02)
+                       eps_gamma = 0.014)
 end <- Sys.time()
 end - start
 str(prova)
 
 n = length(y)
-burnin = 1:30
+
 plot(1:nrep, prova$lambda, type = "l", main = "lambda")
 lines(1:nrep, cumsum(prova$lambda)/1:nrep, col = 2)
 abline(h=10, col = "blue")
@@ -323,18 +321,13 @@ lines(1:nrep, cumsum(prova$gamma)/1:nrep, col = 2)
 abline(h=0.8, col = "blue")
 
 
-apply(prova$A, 2, function(x) sum(!is.na(x)))
-plot(1:nrep, prova$A[,1], type = "l", main = "A")
-lines(1:nrep, cumsum(prova$A[,1])/1:nrep, col = 2)
 
-plot(1:nrep, prova$A[,2], type = "l", main = "A")
-lines(1:nrep, cumsum(prova$A[,2])/1:nrep, col = 2)
-
+burnin = 1:100
 plot(1:n, y, type = "l")
 AA = matrix(0,nrep,n)
 for(i in 1:nrep)
 {
-  AA[i,spikes == 1] = prova$A[i, prova$clus[i,spikes>0]]
+  AA[i, prova$s[i,] == 1] = prova$A[i, prova$clus[i, prova$s[i,]==1]]
 }
 
 calcium = matrix(0, nrep, n+1)
@@ -347,7 +340,7 @@ for(i in 1:nrep)
 }
 
 plot(1:n, y, type = "l")
-lines(1:n, mean(prova$b[-burnin]) + colMeans(calcium)[2:(n+1)], col = "turquoise3", lwd = 1.8)
+lines(1:n, mean(prova$b[-burnin]) + colMeans(calcium)[2:(n+1)], col = "turquoise3", lwd = 1.5)
 
 abline(v = which(colMeans(prova$s[-burnin,])>0.6), lty = 3, col = "salmon")
 
