@@ -31,9 +31,9 @@ data <- sim_data(n = 1000, lambda = 10, time_spike = c(100, 150, 200, 300, 400, 
                  gamma = 0.8, b = 2,
                  prob = c(0.3, 0.5, 0.2), par = c(4,12,7))
 
-# data <- sim_data(n = 500, lambda = 10, time_spike = c(50,140,180,250,350,420,460),
-#                  gamma = 0.8, b = 0,
-#                  prob = c(0.4, 0.6), par = c(4, 10))
+data <- sim_data(n = 500, lambda = 10, time_spike = c(50,140,180,250,350,420,460),
+                 gamma = 0.8, b = 0,
+                 prob = c(0.4, 0.6), par = c(4, 10))
 
 y = data$y 
 plot(y, type = "l", main = "")
@@ -101,7 +101,7 @@ nrep=50
 trunc = 500
 pois_mean = 2
 
-
+options(warn=2)
 gibbs_calcium <- function(nrep, y, 
                           c0 = 0, tau2 = 0.0001, 
                           # hyperparameters
@@ -150,12 +150,12 @@ gibbs_calcium <- function(nrep, y,
 
   
   ############
-  out_s[1,] = data$s
-  cluster[1,] = 0
-  cluster[1,data$s == 1] = data$k
-  out_A[1,1:3] = c(4,12,7)
-  AA = rep(3,n)
-  AA[data$s == 1] = out_A[1,cluster[1,data$s == 1]]
+  # out_s[1,] = data$s
+  # cluster[1,] = 0
+  # cluster[1,data$s == 1] = data$k
+  # out_A[1,1:3] = c(4,12,7)
+  # AA = rep(3,n)
+  # AA[data$s == 1] = out_A[1,cluster[1,data$s == 1]]
   
   for(i in 1:(nrep-1))
   {
@@ -193,16 +193,16 @@ gibbs_calcium <- function(nrep, y,
     
     # # MH per gamma: random walk
     oldgamma = out_gamma[i] 
-    newgamma = oldgamma + runif(1, -eps_gamma, eps_gamma)
-    ratio = exp( logpost(y = y, cc = out_c[i+1,1:n], s = out_s[i,],
-                         A = AA, gamma = newgamma,
-                         b = out_b[i+1], lambda = out_lambda[i+1],
-                         hyp_gamma1 = hyp_gamma1, hyp_gamma2 = hyp_gamma2) -
-                  logpost(y = y, cc = out_c[i+1,1:n], s = out_s[i,],
-                          A = AA, gamma = oldgamma,
-                          b = out_b[i+1], lambda = out_lambda[i+1],
-                          hyp_gamma1 = hyp_gamma1, hyp_gamma2 = hyp_gamma2) )
-    if(runif(1) < ratio) oldgamma = newgamma
+    # newgamma = oldgamma + runif(1, -eps_gamma, eps_gamma)
+    # ratio = exp( logpost(y = y, cc = out_c[i+1,1:n], s = out_s[i,],
+    #                      A = AA, gamma = newgamma,
+    #                      b = out_b[i+1], lambda = out_lambda[i+1],
+    #                      hyp_gamma1 = hyp_gamma1, hyp_gamma2 = hyp_gamma2) -
+    #               logpost(y = y, cc = out_c[i+1,1:n], s = out_s[i,],
+    #                       A = AA, gamma = oldgamma,
+    #                       b = out_b[i+1], lambda = out_lambda[i+1],
+    #                       hyp_gamma1 = hyp_gamma1, hyp_gamma2 = hyp_gamma2) )
+    # if(runif(1) < ratio) oldgamma = newgamma
     out_gamma[i+1] = oldgamma
     
     # sampling di s
@@ -252,8 +252,8 @@ gibbs_calcium <- function(nrep, y,
     # sampling di A
     out_A[i+1,] = NA
     nj = sapply(sort(unique(cluster[i+1,out_s[i+1,]>0])), function(x) sum(cluster[i+1,out_s[i+1,]>0] == x))
-    sumj = sapply(sort(unique(cluster[i+1,out_s[i+1,]>0])), 
-                  function(x) sum(y[cluster[i+1,] == x] - out_b[i+1] - out_gamma[i+1] * out_c[i+1, cluster[i+1,] == x]) )
+    sumj = sapply(sort(unique(cluster[i+1, out_s[i+1,]>0])), 
+                  function(x) sum(y[cluster[i+1,] == x] - out_b[i+1] - out_gamma[i+1] * out_c[i+1,1:n][cluster[i+1,] == x]) )
     out_A[i+1, 1:length(unique(cluster[i+1,out_s[i+1,]>0]))] = rtruncnorm( length(unique(cluster[i+1,out_s[i+1,]>0])), 
                                                                            a = 0, b = Inf, 
                                                                            mean = psi2 * sumj / (nj * psi2 + sigma2), 
@@ -293,7 +293,7 @@ gibbs_calcium <- function(nrep, y,
 
 
 
-nrep = 200
+nrep = 1000
 start <- Sys.time()
 prova <- gibbs_calcium(nrep = nrep, y = y, 
                        alpha = 1, 
@@ -301,7 +301,7 @@ prova <- gibbs_calcium(nrep = nrep, y = y,
                        p = 0.05,
                        lambda_start = 10, b_start = 2,
                        gamma_start = 0.8, A_start = 15,
-                       eps_gamma = 0.014)
+                       eps_gamma = 0.015)
 end <- Sys.time()
 end - start
 str(prova)
@@ -312,7 +312,7 @@ plot(1:nrep, prova$lambda, type = "l", main = "lambda")
 lines(1:nrep, cumsum(prova$lambda)/1:nrep, col = 2)
 abline(h=10, col = "blue")
 
-plot(1:nrep, prova$b, type = "l", main = "b")
+plot(1:nrep, prova$b, type = "l", main = "b", ylim = c(-0.2,0.4))
 lines(1:nrep, cumsum(prova$b)/1:nrep, col = 2)
 abline(h=0, col = "blue")
 
@@ -322,7 +322,7 @@ abline(h=0.8, col = "blue")
 
 
 
-burnin = 1:100
+burnin = 1:500
 plot(1:n, y, type = "l")
 AA = matrix(0,nrep,n)
 for(i in 1:nrep)
@@ -342,14 +342,18 @@ for(i in 1:nrep)
 plot(1:n, y, type = "l")
 lines(1:n, mean(prova$b[-burnin]) + colMeans(calcium)[2:(n+1)], col = "turquoise3", lwd = 1.5)
 
-abline(v = which(colMeans(prova$s[-burnin,])>0.6), lty = 3, col = "salmon")
+abline(v = which(colMeans(prova$s[-burnin,])>0.5), lty = 3, col = "salmon")
 
 
-which(colMeans(prova$s[-burnin,])>0.7)
+which(colMeans(prova$s[-burnin,])>0.5)
 #c(50,140,180,250,350,420,460)
 
-
-
+prova$A[is.na(prova$A)] = 0
+apply(prova$A, 2, function(x) sum(x)==0)
+prova$A = prova$A[,1:9]
+A2 = t(apply(prova$A[-burnin,], 1, sort, decreasing = TRUE))
+str(A2)
+A2[1:100,1:6]
 
 
 
