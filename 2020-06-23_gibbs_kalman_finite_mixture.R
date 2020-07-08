@@ -150,7 +150,7 @@ gibbs_calcium <- function(nrep, y,
 
   
   ############
-  # out_s[1,] = data$s
+  out_s[1,] = data$s
   # cluster[1,] = 0
   # cluster[1,data$s == 1] = data$k
   # out_A[1,1:3] = c(4,12,7)
@@ -193,23 +193,23 @@ gibbs_calcium <- function(nrep, y,
     
     # # MH per gamma: random walk
     oldgamma = out_gamma[i] 
-    # newgamma = oldgamma + runif(1, -eps_gamma, eps_gamma)
-    # ratio = exp( logpost(y = y, cc = out_c[i+1,1:n], s = out_s[i,],
-    #                      A = AA, gamma = newgamma,
-    #                      b = out_b[i+1], lambda = out_lambda[i+1],
-    #                      hyp_gamma1 = hyp_gamma1, hyp_gamma2 = hyp_gamma2) -
-    #               logpost(y = y, cc = out_c[i+1,1:n], s = out_s[i,],
-    #                       A = AA, gamma = oldgamma,
-    #                       b = out_b[i+1], lambda = out_lambda[i+1],
-    #                       hyp_gamma1 = hyp_gamma1, hyp_gamma2 = hyp_gamma2) )
-    # if(runif(1) < ratio) oldgamma = newgamma
+    newgamma = oldgamma + runif(1, -eps_gamma, eps_gamma)
+    ratio = exp( logpost(y = y, cc = out_c[i+1,1:n], s = out_s[i,],
+                         A = AA, gamma = newgamma,
+                         b = out_b[i+1], lambda = out_lambda[i+1],
+                         hyp_gamma1 = hyp_gamma1, hyp_gamma2 = hyp_gamma2) -
+                  logpost(y = y, cc = out_c[i+1,1:n], s = out_s[i,],
+                          A = AA, gamma = oldgamma,
+                          b = out_b[i+1], lambda = out_lambda[i+1],
+                          hyp_gamma1 = hyp_gamma1, hyp_gamma2 = hyp_gamma2) )
+    if(runif(1) < ratio) oldgamma = newgamma
     out_gamma[i+1] = oldgamma
     
     # sampling di s
     out_p1[i+1,] = exp(-.5 / sigma2 * (y - out_b[i] - out_gamma[i] * out_c[i,1:n] - AA)^2 ) * p
     out_p0[i+1,] = exp(-.5 / sigma2 * (y - out_b[i] - out_gamma[i] * out_c[i,1:n])^2 ) * (1-p)
     out_s[i+1,] = apply(cbind(out_p0[i+1,], out_p1[i+1,]), 1, function(x) sample(c(0,1), 1, prob = x))
-     
+    
     cluster[i+1,] = cluster[i,]
     cluster[i+1,][out_s[i+1,] == 0] = 0
     out_A[i+1,] = out_A[i,]
@@ -270,19 +270,20 @@ gibbs_calcium <- function(nrep, y,
                       function(x) dnorm(y[j], mean = out_b[i+1] + out_gamma[i+1] * out_c[i+1,j] + out_A[i+1,x], 
                                         sd = sqrt(sigma2)) ) * (nj + alpha) 
 
-      v_ratio = v(n = sum(out_s[i+1,]>0), t = length(nj)+1, alpha = alpha, pois_mean = pois_mean, trunc = trunc) / 
-        v(n = sum(out_s[i+1,]>0), t = length(nj), alpha = alpha, pois_mean = pois_mean, trunc = trunc)
-      
-      prob_new = v_ratio * alpha  * marg(y = y[j], b = out_b[i+1], c = out_c[i+1,j], gamma = out_gamma[i+1], 
-                                         s = out_s[i+1,j], sigma2 = sigma2, psi2 = 1)
-      
-      clus_tmp[1] = sample(1:(length(unique(clus_tmp[-1]))+1), 1, prob = c(prob_c, prob_new) )
-      
-      #sampling di A
-      if(clus_tmp[1] == max(unique(clus_tmp[-1])+1) ) {AA[j] = rtruncnorm( 1, a = 0, b = Inf,
-                           mean = psi2 * (y[j] - out_b[i+1] - out_gamma[i+1] * out_c[i+1, j]) / (psi2 + sigma2),
-                            sd = sqrt(sigma2 * psi2 / (psi2 + sigma2) ) )}
-      else {AA[j] = out_A[i+1, clus_tmp[1]]}
+      # v_ratio = v(n = sum(out_s[i+1,]>0), t = length(nj)+1, alpha = alpha, pois_mean = pois_mean, trunc = trunc) / 
+      #   v(n = sum(out_s[i+1,]>0), t = length(nj), alpha = alpha, pois_mean = pois_mean, trunc = trunc)
+      # 
+      # prob_new = v_ratio * alpha  * marg(y = y[j], b = out_b[i+1], c = out_c[i+1,j], gamma = out_gamma[i+1], 
+      #                                    s = out_s[i+1,j], sigma2 = sigma2, psi2 = 1)
+      # 
+      clus_tmp[1] = sample(1:(length(unique(clus_tmp[-1]))), 1, prob = prob_c )
+      # 
+      # #sampling di A
+      # if(clus_tmp[1] == max(unique(clus_tmp[-1])+1) ) {AA[j] = rtruncnorm( 1, a = 0, b = Inf,
+      #                      mean = psi2 * (y[j] - out_b[i+1] - out_gamma[i+1] * out_c[i+1, j]) / (psi2 + sigma2),
+      #                       sd = sqrt(sigma2 * psi2 / (psi2 + sigma2) ) )}
+      # else {
+        AA[j] = out_A[i+1, clus_tmp[1]]#}
       
     }
     
@@ -293,14 +294,14 @@ gibbs_calcium <- function(nrep, y,
 
 
 
-nrep = 1000
+nrep = 600
 start <- Sys.time()
 prova <- gibbs_calcium(nrep = nrep, y = y, 
                        alpha = 1, 
                        trunc = 300, pois_mean = 2,
                        p = 0.05,
                        lambda_start = 10, b_start = 2,
-                       gamma_start = 0.8, A_start = 15,
+                       gamma_start = 0.8, A_start = 2,
                        eps_gamma = 0.015)
 end <- Sys.time()
 end - start
@@ -322,7 +323,7 @@ abline(h=0.8, col = "blue")
 
 
 
-burnin = 1:500
+burnin = 1:300
 plot(1:n, y, type = "l")
 AA = matrix(0,nrep,n)
 for(i in 1:nrep)
