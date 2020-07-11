@@ -81,7 +81,7 @@ marg <- function(y, b, c, gamma, sigma2, psi2)
 }
 
 
-gamma_start = 0.8; b_start = 2
+gamma_start = 0.8; b_start = 0
 A_start = 5; tau2 = 0.0001
 lambda_start = 10
 c0 = 0; p = 0.005; alpha = 1
@@ -93,7 +93,7 @@ nrep=50
 gibbs_calcium <- function(nrep, y,
                           gamma_start = 0.8,  b_start = 2, A_start = 5,
                           tau2 = 0.0001, lambda_start = 10, c0 = 0,
-                          p = 0.005, 
+                          p = 0.995, 
                           alpha = 1, psi2 = 2,
                           hyp_A1 = 3, hyp_A2 = 1, hyp_gamma1 = 5, hyp_gamma2 = 2,
                           hyp_lambda1 = 10, hyp_lambda2 = 1, hyp_b1 = 1, hyp_b2 = 1,
@@ -160,7 +160,6 @@ gibbs_calcium <- function(nrep, y,
     # sampling di b
     out_b[i+1] = rnorm(1, mean = (n * mean(z) + hyp_b2 * hyp_b1) / (n + hyp_b2),
                        sd = 1/ sqrt((n + hyp_b2) * out_lambda[i+1]) )
-    #out_b[i+1] = out_b[i]
     
     # # MH per gamma: random walk
     oldgamma = out_gamma[i] 
@@ -179,9 +178,15 @@ gibbs_calcium <- function(nrep, y,
     cluster[i+1,] = cluster[i,]
     for(j in 1:n)
     {
+      # sampling di A nuovo
+      # ordinamento di A 
+      
+      A_new = NA
       clus_tmp = cluster[i+1,]
       clus_tmp[j] = NA
-      pr0 = p * exp(-.5 / sigma2 * (y[j] - out_b[i] - out_gamma[i] * out_c[i+1,j])^2 )
+      
+      out_A[i+1, 1:(length(unique(clus_tmp[!is.na(clus_tmp) & clus_tmp>0])))] = out_A[i+1, sort(unique(clus_tmp[!is.na(clus_tmp) & clus_tmp>0])) ]
+      pr0 = p * dnorm(y[j], mean = out_b[i] + out_gamma[i] * out_c[i+1,j], sd = sqrt(sigma2)) 
       
       pr_new = (1-p) * alpha * marg(y = y[j], b = out_b[i+1], c = out_c[i+1,j], gamma = out_gamma[i+1], 
                                     sigma2 = sigma2, psi2 = 1)
@@ -191,10 +196,18 @@ gibbs_calcium <- function(nrep, y,
       if(length(nj)>0)
       {
         pr_clus = sapply(sort(unique(clus_tmp[-j][clus_tmp[-j]>0])), 
-                         function(x) dnorm(y[out_s[i+1,]>0][j], mean = out_b[i+1] + out_gamma[i+1] * out_c[i+1,j] + out_A[i+1,x], 
+                         function(x) dnorm(y[j], mean = out_b[i+1] + out_gamma[i+1] * out_c[i+1,j] + out_A[i+1,x], 
                                            sd = sqrt(sigma2)) ) * nj / (n-1+alpha)
       }
-      clus_tmp[j] = sample( -1:(length(unique(clus_tmp[-j][clus_tmp[-j]>0]))+1), 1, prob = c(pr_new, pr0, pr_clus) )
+      clus_tmp[j] = sample( -1:length(pr_clus), 1, prob = c(pr_new, pr0, pr_clus) )
+      
+      if(clus_tmp[j] == -1) A_new = 
+      
+      if(length(clus_tmp[clus_tmp != 0]))
+      {
+        clus_tmp[clus_tmp != 0] = as.numeric( factor( clus_tmp[clus_tmp != 0], labels = 1:(length(unique(clus_tmp[clus_tmp != 0]))) ) )
+      }
+      cluster[i+1, ] = clus_tmp
     }
     
     # sampling di s
