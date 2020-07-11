@@ -224,7 +224,7 @@ gibbs_calcium <- function(nrep, y,
     out_A[i+1,] = NA
     nj = sapply(sort(unique(cluster[i+1,out_s[i+1,]>0])), function(x) sum(cluster[i+1,out_s[i+1,]>0] == x))
     sumj = sapply(sort(unique(cluster[i+1,out_s[i+1,]>0])), 
-                  function(x) sum(y[cluster[i+1,] == x] - out_b[i+1] - out_gamma[i+1] * out_c[i+1, cluster[i+1,] == x]) )
+                  function(x) sum(y[cluster[i+1,] == x] - out_b[i+1] - out_gamma[i+1] * out_c[i+1,1:n][cluster[i+1,] == x]) )
     out_A[i+1, 1:length(unique(cluster[i+1,out_s[i+1,]>0]))] = rtruncnorm( length(unique(cluster[i+1,out_s[i+1,]>0])), 
                                                                            a = 0, b = Inf, mean = psi2 * sumj / (nj * psi2 + sigma2), 
                                                                            sd = sqrt(sigma2 * psi2 / (nj*psi2 + sigma2) ) )
