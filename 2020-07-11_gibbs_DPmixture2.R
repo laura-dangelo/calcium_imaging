@@ -18,7 +18,7 @@ sim_data <- function(n, lambda, time_spike, b, gamma, prob, par)
   s[time_spike] = 1
   
   k <- sample(1:length(prob), sum(s), prob, replace = TRUE)
-  A[time_spike] <- rnorm(sum(s), par[k], 0.8)
+  A[time_spike] <- rnorm(sum(s), par[k], 0.5)
   
   for(i in 2:n)
   {
@@ -79,16 +79,27 @@ c0 = 0; p = 0.995; alpha = 1
 hyp_A1 = 3; hyp_A2 = 1; hyp_gamma1 = 5; hyp_gamma2 = 2
 hyp_lambda1 = 10; hyp_lambda2 = 1; hyp_b1 = 1; hyp_b2 = 1
 psi2 = 2
+eps_gamma = 0.3
+C0 = 1
 
 nrep=50
 gibbs_calcium <- function(nrep, y,
-                          gamma_start = 0.8,  b_start = 2, A_start = 5,
-                          tau2 = 0.0001, lambda_start = 10, c0 = 0,
+                          # chain starting points
+                          b_start = median(y),
+                          gamma_start = 0.8,  lambda_start = 10,  
+                          # (fized) variance of the underlying calcium
+                          tau2 = 0.0001,
+                          # calcium initial value and variance
+                          c0 = 0, C0 = 1,
+                          # prior probability of a spike
                           p = 0.995, 
+                          # DP concentration parameter, variance of G0
                           alpha = 1, psi2 = 2,
+                          # hyperparameters
                           hyp_A1 = 3, hyp_A2 = 1, hyp_gamma1 = 5, hyp_gamma2 = 2,
                           hyp_lambda1 = 10, hyp_lambda2 = 1, hyp_b1 = 1, hyp_b2 = 1,
-                          eps_gamma, eps_A)
+                          # MH step
+                          eps_gamma)
 {
   n = length(y)
   # creo matrici di output
@@ -102,6 +113,8 @@ gibbs_calcium <- function(nrep, y,
   
   filter_mean = numeric(n)
   filter_var = numeric(n)
+  R = numeric(n)
+  a = numeric(n)
   
   cluster = matrix(0, nrep, n) 
   
@@ -116,33 +129,41 @@ gibbs_calcium <- function(nrep, y,
   cluster[1,] = 0 # vettore di lunghezza n con il cluster Zj
   
   ###
-  out_A[1,2:3] = c(4,10)
-  out_c[1,] = c(0,data$c)
-  cluster[1, c(50,140,180,250,350,420,460)] = data$k
+  # out_A[1,2:3] = c(4,10)
+  # out_c[1,] = c(0,data$c)
+  # cluster[1, c(50,140,180,250,350,420,460)] = data$k
   
   for(i in 1:(nrep-1))
   {
     sigma2 = 1/out_lambda[i]
 
     # sampling di c
-    filter_mean[1] = (sigma2 * (out_b[i] + out_gamma[i] * out_c[i,1] + out_A[i, cluster[i,1]+1] ) + tau2 * y[1]) / (tau2 + sigma2)
-    filter_var[1] = tau2 * sigma2 / (tau2 + sigma2)
+    R[1] = tau2 + out_gamma[i]^2 * C0
+    filter_mean[1] = (sigma2 * out_A[i, cluster[i,1]+1] + R[1] * (y[1] - out_b[i])) / (sigma2 + R[1])
+    filter_var[1] = sigma2 * R[1] /  (sigma2 + R[1])
     
     for(j in 2:n)
     {
-      filter_mean[j] = (sigma2 * (out_gamma[i] * filter_mean[j-1] + out_A[i, cluster[i,j]+1] ) + 
-                          (filter_var[j-1] + tau2) * y[j]) / (filter_var[j-1] + tau2 + sigma2)
-      filter_var[j] = ((filter_var[j-1] + tau2) * sigma2) / (filter_var[j-1] + tau2 + sigma2)
+      R[j] = out_gamma[i]^2 * filter_var[j-1] + tau2
+      a[j] = out_gamma[i] * filter_mean[j-1] + out_A[i, cluster[i,j]+1]
+      
+      filter_mean[j] = a[j] + R[j]/(R[j] + sigma2) * (y[j] - out_b[i] - a[j])
+      filter_var[j] = R[j] - R[j]^2/(R[j] + sigma2)
     }
-    out_c[i+1,n+1] = rnorm(1, filter_mean[n], filter_var[n])
+    out_c[i+1, n+1] = rnorm(1, filter_mean[n], filter_var[n])
     
     for(j in (n-1):1)
     {
-      back_mean = filter_mean[j] + out_gamma[i] * filter_var[j]/(filter_var[j] + tau2) * 
-        (out_c[i+1,j+2] - out_gamma[i] * filter_mean[j] - out_A[i, cluster[i,j]+1])
-      back_var = filter_var[j] - out_gamma[i]^2 * filter_var[j]^2 / (filter_var[j] + tau2)
+      back_mean = filter_mean[j] + out_gamma[i] * filter_var[j] / (R[j+1]) * (out_c[i+1,j+2] - a[j+1])
+      back_var = filter_var[j] - out_gamma[i]^2 * filter_var[j]^2 / (R[j+1])
+
       out_c[i+1,j+1] = rnorm(1, back_mean, back_var)
     }
+    
+    back_mean = out_gamma[i] * C0/(C0 + tau2) * (out_c[i+1,2])
+    back_var = C0 - out_gamma[i]^2 * C0^2 / (R[1])
+    out_c[i+1, 1] = rnorm(1, back_mean, back_var)
+    
     
     # sampling di lambda (precision)
     z = y - out_gamma[i] * out_c[i+1,1:n] - out_A[i, cluster[i,]+1] 
@@ -176,41 +197,40 @@ gibbs_calcium <- function(nrep, y,
       clus_tmp = cluster[i+1,]
       A_tmp = out_A[i+1,]
       clus_tmp[j] = NA
-      
+
       if(length(unique(clus_tmp))>2)
       {
-        clus_tmp[!is.na(clus_tmp) & clus_tmp>0] = as.numeric( factor( clus_tmp[!is.na(clus_tmp) & clus_tmp>0], 
+        clus_tmp[!is.na(clus_tmp) & clus_tmp>0] = as.numeric( factor( clus_tmp[!is.na(clus_tmp) & clus_tmp>0],
                                                                       labels = 1:(length(unique(clus_tmp[clus_tmp>0]))-1) ) )
-        
+
         out_A[i+1, 2:n] = NA
         out_A[i+1, 2:(length(unique(clus_tmp[!is.na(clus_tmp) & clus_tmp>0]))+1)] = A_tmp[2:max(sort(unique(clus_tmp[!is.na(clus_tmp) & clus_tmp>0]))+1) ]
-        
+
       }
-            
-      pr0 = p * dnorm(y[j], mean = out_b[i+1] + out_gamma[i+1] * out_c[i+1,j], sd = sqrt(sigma2 + tau2)) 
-      
-      pr_new = (1-p) * alpha * marg(y = y[j], b = out_b[i+1], c = out_c[i+1,j], gamma = out_gamma[i+1], 
+
+      pr0 = p * dnorm(y[j], mean = out_b[i+1] + out_gamma[i+1] * out_c[i+1,j], sd = sqrt(sigma2 + tau2))
+
+      pr_new = (1-p) * alpha * marg(y = y[j], b = out_b[i+1], c = out_c[i+1,j], gamma = out_gamma[i+1],
                                     sigma2 = (sigma2 + tau2), psi2 = psi2)
-        
+
       nj = sapply(sort(unique(clus_tmp[!is.na(clus_tmp) & clus_tmp>0])), function(x) sum(clus_tmp[-j][clus_tmp[-j]>0] == x))
       pr_clus = 0
       if(length(nj)>0)
       {
-        pr_clus = sapply(sort(unique(clus_tmp[-j][clus_tmp[-j]>0])), 
-                         function(x) dnorm(y[j], mean = out_b[i+1] + out_gamma[i+1] * out_c[i+1,j] + out_A[i+1,x+1], 
-                                           sd = sqrt(sigma2 + tau2)) ) * nj / (n-1+alpha)
+        pr_clus = nj  * (1-p) * sapply(sort(unique(clus_tmp[-j][clus_tmp[-j]>0])),
+                                          function(x) dnorm(y[j], mean = out_b[i+1] + out_gamma[i+1] * out_c[i+1,j] + out_A[i+1,x+1],
+                                           sd = sqrt(sigma2 + tau2)) ) 
       }
       clus_tmp[j] = sample( -1:length(pr_clus), 1, prob = c(pr_new, pr0, pr_clus) )
-      
-      if(clus_tmp[j] == -1) 
+
+      if(clus_tmp[j] == -1)
       {
         clus_tmp[j] = max(clus_tmp) +1
         out_A[i+1, clus_tmp[j]+1] = rtruncnorm(1, mean = psi2 / (psi2 + sigma2 + tau2) * (y[j] - out_b[i+1] - out_gamma[i+1] * out_c[i+1, j]),
-                                    sd = sqrt((sigma2 + tau2) * psi2 / (psi2 + sigma2 + tau2) )) 
+                                     sd = sqrt((sigma2 + tau2) * psi2 / (psi2 + sigma2 + tau2) ))
       }
-      
+
       cluster[i+1, ] = clus_tmp
-      #     j = j+1
     }
     
     # sampling di A
@@ -225,7 +245,7 @@ gibbs_calcium <- function(nrep, y,
     
     
   }
-  return(list(c = out_c, s = out_s, lambda = out_lambda, A = out_A, gamma = out_gamma, b = out_b, clus = cluster))
+  return(list(c = out_c, lambda = out_lambda, A = out_A, gamma = out_gamma, b = out_b, clus = cluster))
 }
 
 
@@ -234,8 +254,9 @@ gibbs_calcium <- function(nrep, y,
 nrep = 1000
 start <- Sys.time()
 prova <- gibbs_calcium(nrep = nrep, y = y, 
+                       C0 = 0.5,
                        p = 0.995,
-                       lambda_start = 10, b_start = 0,
+                       lambda_start = 10, b_start = 1,
                        gamma_start = 0.8, A_start = 3,
                        eps_gamma = 0.03, 
                        psi2 = 2, tau2 = 0.00001)
@@ -263,7 +284,7 @@ plot(1:n, y, type = "l")
 AA = matrix(0,nrep,n)
 for(i in 1:nrep)
 {
-  AA[i, prova$clus[i,] >0] = prova$A[i, prova$clus[i, prova$clus[i,] >0]]
+  AA[i, prova$clus[i,] >0] = prova$A[i, prova$clus[i, prova$clus[i,] >0]+1]
 }
 
 calcium = matrix(0, nrep, n+1)
@@ -278,9 +299,10 @@ for(i in 1:nrep)
 plot(1:n, y, type = "l")
 lines(1:n, mean(prova$b[-burnin]) + colMeans(calcium)[2:(n+1)], col = "turquoise3", lwd = 1.5)
 
-abline(v = which( apply(prova$clus[-burnin,], 2, function(x) mean(x != 0))>0.5 ), lty = 3, col = "salmon")
+abline(v = which( apply(prova$clus[-burnin,], 2, function(x) mean(x != 0))>0.8), lty = 3, col = "salmon")
 
-which( apply(prova$clus[-burnin,], 2, function(x) mean(x != 0))>0.5 )
+hist(apply(prova$clus[-burnin,], 2, function(x) mean(x != 0)))
+which( apply(prova$clus[-burnin,], 2, function(x) mean(x != 0))>0.8 )
 #c(50,140,180,250,350,420,460)
 
 
