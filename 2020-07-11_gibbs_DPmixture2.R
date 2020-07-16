@@ -27,11 +27,11 @@ sim_data <- function(n, lambda, time_spike, b, gamma, prob, par)
   return(list("y" = b + c + rnorm(n, 0, 1/sqrt(lambda)), "c" = c, "s" = s, "A" = A, "k" = k))
 }
 
-data <- sim_data(n = 1000, lambda = 10, time_spike = c(100, 150, 400, 500, 700, 300, 600,850), 
-                 gamma = 0.8, b = 2,
-                 prob = c(0.1, 0.7, 0.2), par = c(0.6, 1, 2))
+# data <- sim_data(n = 1000, lambda = 8, time_spike = c(100, 101, 150, 300, 400,402, 500, 700, 720, 850), 
+#                  gamma = 0.8, b = 2,
+#                  prob = c(0.1, 0.7, 0.2), par = c(4, 10, 6))
 
-data <- sim_data(n = 500, lambda = 10, time_spike = c(50,140,180,250,350,420,460), 
+data <- sim_data(n = 500, lambda = 10, time_spike = c(50,52, 140, 180, 250, 350, 420, 421, 460),
                  gamma = 0.8, b = 0,
                  prob = c(0.4, 0.6), par = c(4, 10))
 
@@ -71,18 +71,18 @@ marg <- function(y, b, c, gamma, sigma2, psi2)
     (1 - pnorm(0, mean = psi2 / (sigma2 + psi2) * (y-b-gamma*c), sd = sqrt(sigma2 * psi2 / (sigma2 + psi2)) ) )
 }
 
-
-gamma_start = 0.8; b_start = 0
-tau2 = 0.0001
-lambda_start = 10
-c0 = 0; p = 0.995; alpha = 1
-hyp_A1 = 3; hyp_A2 = 1; hyp_gamma1 = 5; hyp_gamma2 = 2
-hyp_lambda1 = 10; hyp_lambda2 = 1; hyp_b1 = 1; hyp_b2 = 1
-psi2 = 2
-eps_gamma = 0.3
-C0 = 1
-
-nrep=50
+# 
+# gamma_start = 0.8; b_start = 0
+# tau2 = 0.0001
+# lambda_start = 10
+# c0 = 0; p = 0.995; alpha = 1
+# hyp_A1 = 3; hyp_A2 = 1; hyp_gamma1 = 5; hyp_gamma2 = 2
+# hyp_lambda1 = 10; hyp_lambda2 = 1; hyp_b1 = 1; hyp_b2 = 1
+# psi2 = 2
+# eps_gamma = 0.3
+# C0 = 1
+# 
+# nrep=50
 gibbs_calcium <- function(nrep, y,
                           # chain starting points
                           b_start = median(y),
@@ -127,12 +127,7 @@ gibbs_calcium <- function(nrep, y,
   out_lambda[1] = lambda_start
   
   cluster[1,] = 0 # vettore di lunghezza n con il cluster Zj
-  
-  ###
-  # out_A[1,2:3] = c(4,10)
-  # out_c[1,] = c(0,data$c)
-  # cluster[1, c(50,140,180,250,350,420,460)] = data$k
-  
+
   for(i in 1:(nrep-1))
   {
     sigma2 = 1/out_lambda[i]
@@ -251,14 +246,15 @@ gibbs_calcium <- function(nrep, y,
 
 
 
-nrep = 1000
+nrep = 1500
 start <- Sys.time()
 prova <- gibbs_calcium(nrep = nrep, y = y, 
                        C0 = 0.5,
                        p = 0.995,
-                       lambda_start = 10, b_start = 1,
-                       gamma_start = 0.8, A_start = 3,
+                       lambda_start = 5, b_start = 1,
+                       gamma_start = 0.5, 
                        eps_gamma = 0.03, 
+                       alpha = 1,
                        psi2 = 2, tau2 = 0.00001)
 end <- Sys.time()
 end - start
@@ -299,17 +295,22 @@ for(i in 1:nrep)
 plot(1:n, y, type = "l")
 lines(1:n, mean(prova$b[-burnin]) + colMeans(calcium)[2:(n+1)], col = "turquoise3", lwd = 1.5)
 
-abline(v = which( apply(prova$clus[-burnin,], 2, function(x) mean(x != 0))>0.8), lty = 3, col = "salmon")
+abline(v = which( apply(prova$clus[-burnin,], 2, function(x) mean(x != 0))>0.95), lty = 3, col = "salmon")
 
-hist(apply(prova$clus[-burnin,], 2, function(x) mean(x != 0)))
-which( apply(prova$clus[-burnin,], 2, function(x) mean(x != 0))>0.8 )
-#c(50,140,180,250,350,420,460)
+hist(apply(prova$clus[-burnin,], 2, function(x) mean(x != 0)), main = "Distr. of spike probabilities")
+which( apply(prova$clus[-burnin,], 2, function(x) mean(x != 0))>0.95 )
+#(50,52, 140, 180, 250, 350, 420, 421, 460)
 
+which(apply(prova$A, 2, function(x) sum(!is.na(x))>0))
+prova$A = prova$A[,1:20]
+  
 
+prova$A[500:540,]
+prova$A[is.na(prova$A)] = 0
+maxA = apply(prova$A, 1, max)
+mean(maxA)
 
-
-
-
-
+max2A = t(apply(prova$A, 1, sort))
+colMeans(max2A)
 
 
