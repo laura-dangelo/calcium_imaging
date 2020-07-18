@@ -9,17 +9,14 @@
 using namespace Rcpp;
 
 // log-likelihood
-double loglik(arma::vec y, arma::vec cc, arma::vec A, 
+double loglik(arma::vec y, arma::rowvec cc, arma::vec A, 
               double b, double gamma, double lambda)
 {
   int n = y.n_elem;
   arma::vec llik(n);
-  
-  arma::vec mean;
-  for(int j = 0; j < n; j++) { mean(j) = b + gamma * cc(j) + A(j); }
-  
+
   for(int k = 0; k < n; k++) { 
-    llik(k) = 0.5 * (std::log(lambda) - std::log(2 * M_PI) - lambda * pow(y[k] - mean[k], 2) );
+    llik(k) = R::dnorm(y(k), b + gamma * cc(k) + A(k), std::sqrt(lambda), true) ;
   }
   return arma::accu(llik);
 }
@@ -33,7 +30,7 @@ double logprior_gamma(double gamma, double hyp_gamma1, double hyp_gamma2)
 }
 
 // log-posterior
-double logpost(arma::vec y, arma::vec cc, arma::vec A, 
+double logpost(arma::vec y, arma::rowvec cc, arma::vec A, 
                double b, double gamma, double lambda,
                double hyp_gamma1, double hyp_gamma2)
 {
@@ -275,7 +272,6 @@ Rcpp::List calcium_gibbs(int Nrep, arma::vec y,
 // [[Rcpp::export]]
 Rcpp::List calcium_gibbs_debug(int Nrep, arma::vec y,  
                                arma::rowvec clus,
-                               arma::rowvec calc,
                                double gamma_start, double lambda_start,
                                double c0, double varC0,
                                double tau2,
@@ -311,7 +307,7 @@ Rcpp::List calcium_gibbs_debug(int Nrep, arma::vec y,
   double back_mean; double back_var ;
   double sigma2 ;
   
-  arma::vec z; arma::vec sq ; 
+  arma::vec z(n) ; arma::vec sq(n) ; 
   
   double oldgamma; double newgamma ;
   double ratio ;
@@ -358,19 +354,36 @@ Rcpp::List calcium_gibbs_debug(int Nrep, arma::vec y,
     
     
     // sampling lambda (precision)
-    out_lambda(i+1) = out_lambda(i) ;
+    for(int j = 0; j < n; j++) { z(j) = y(j) - out_gamma(i) * out_c(i+1, j) - AA(j) ; }
+    for(int j = 0; j < n; j++) { sq(j) = pow(z(j) - arma::mean(z), 2) ; } 
+    out_lambda(i+1) = R::rgamma(hyp_lambda1 + n/2, 
+               1/(hyp_lambda2 + 0.5 * arma::accu(sq) + 0.5 * n * hyp_b2 / (n + hyp_b2) * pow(arma::mean(z) - hyp_b1, 2)) ) ;
     // sampling b
-    out_b(i+1) = out_b(i) ;
+    out_b(i+1) = R::rnorm((n * mean(z) + hyp_b2 * hyp_b1) / (n + hyp_b2), 1/ std::sqrt((n + hyp_b2) * out_lambda(i+1)) ) ;
+    
     
     //MH per gamma: random walk
-    out_gamma(i+1) = out_gamma(i) ;
+    oldgamma = out_gamma(i) ;
+    newgamma = oldgamma + R::runif(-eps_gamma, eps_gamma) ;
+    ratio = exp( logpost(y, out_c.row(i+1), 
+                         AA, out_b(i+1), 
+                         newgamma, out_lambda(i+1),
+                         hyp_gamma1, hyp_gamma2) -
+                  logpost(y, out_c.row(i+1), 
+                          AA, out_b(i+1), 
+                          oldgamma, out_lambda(i+1),
+                          hyp_gamma1, hyp_gamma2) ) ;
+    
+    if(R::runif(0, 1) < ratio) oldgamma = newgamma ;
+    out_gamma(i+1) = oldgamma ;
+    
     
     // Sampling of cluster and cluster parameters
     cluster.row(i+1) = cluster.row(i) ; 
     out_A.row(i+1) = out_A.row(i) ;
     
     
- //   if(i % 100 == 0) { Rcout << "Iteraz. " << i << "\n" ; }
+ //   if(i % 500 == 0) { Rcout << "Iteraz. " << i << "\n" ; }
   }
   return Rcpp::List::create(Rcpp::Named("calcium") = out_c,
                             Rcpp::Named("A") = out_A,
