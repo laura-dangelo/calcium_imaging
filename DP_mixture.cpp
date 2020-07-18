@@ -59,7 +59,6 @@ double marginal(double y, double cc, double b, double gamma,
 
 
 // generazione da normale troncata tra 0 e Inf
-// [[Rcpp::export]]
 double gen_truncnorm(double mean, double sd)
 {
   double out = -1;
@@ -83,8 +82,7 @@ Rcpp::NumericVector arma_setdiff(arma::vec x, arma::vec y)
 }
 
 
-
-
+// [[Rcpp::export]]
 Rcpp::List calcium_gibbs(int Nrep, arma::vec y,  
                          double gamma_start, double lambda_start,
                          double c0, double varC0,
@@ -150,18 +148,18 @@ Rcpp::List calcium_gibbs(int Nrep, arma::vec y,
       filter_var(j) = R(j) - pow(R(j), 2) / (R(j) + sigma2) ;
     }
     out_c(i+1, n) = R::rnorm(filter_mean(n-1), filter_var(n-1)) ;
-      
-    for(int j = n-1; j > 0; j--)
+    
+    for(int j = n-2; j > -1; j--)
     {
       back_mean = filter_mean(j) + out_gamma(i) * filter_var(j) / R(j+1) * (out_c(i+1, j+2) - a(j+1)) ;
       back_var = filter_var(j) - pow(out_gamma(i) * filter_var(j), 2) / R(j+1) ;
-        
+      
       out_c(i+1, j+1) = R::rnorm(back_mean, back_var) ;
     }
     back_mean = out_gamma(i) * varC0 / (varC0 + tau2) * out_c(i+1, 1) ;
-    back_var = varC0 - pow(out_gamma(i) * varC0, 2) / R(1) ;
+    back_var = varC0 - pow(out_gamma(i) * varC0, 2) / R(0) ;
     out_c(i+1, 0) = R::rnorm(back_mean, back_var) ;
-      
+    
     // sampling lambda (precision)
     for(int j = 0; j < n; j++) { z(j) = y(j) - out_gamma(i) * out_c(i+1, j) - AA(j) ; }
     for(int j = 0; j < n; j++) { sq(j) = pow(z(j) - mean(z), 2) ; } 
@@ -248,21 +246,144 @@ Rcpp::List calcium_gibbs(int Nrep, arma::vec y,
     double n_clus = tmp.n_elem -1 ; // number of clusters (n.unique \{0})
     arma::vec nj(n_clus) ;
     arma::vec ssum(n_clus) ;
+    
+    arma::vec lincomb(n) ;
+    for(int l = 0; l < n; l++) { lincomb(l) = y(l) - out_b(i+1) - out_gamma(i+1) * out_c(i+1, l) ; }
+    
     for(int k = 1; k < n_clus + 1; k++) 
     { 
       nj(k-1) = std::count(cluster.row(i+1).begin(), cluster.row(i+1).end(), k) ; 
-      arma::vec lincomb ;
-      lincomb = Rcpp::sapply
+      arma::uvec idk = find( cluster.row(i+1) == k ) ;
+      ssum(k-1) = arma::accu( lincomb(idk) ) ;
+      
+      out_A(i+1, k) = gen_truncnorm( psi2 * ssum(k-1) / (nj(k-1) * psi2 + sigma2 + tau2), std::sqrt((sigma2 + tau2) * psi2 / (nj(k-1) * psi2 + sigma2 + tau2) )) ;
     }
-
-    ///
-    // manca sum 
-    // sampling A
     
+    if(i % 100 == 0) { Rcout << "Iteraz. " << i << "\n" ; }
   }
   return Rcpp::List::create(Rcpp::Named("beta") = out_c,
                             Rcpp::Named("acceptance_rate") = out_A) ;
 }
+
+
+
+
+
+
+
+
+// [[Rcpp::export]]
+Rcpp::List calcium_gibbs_debug(int Nrep, arma::vec y,  
+                               arma::rowvec clus,
+                               arma::rowvec calc,
+                               double gamma_start, double lambda_start,
+                               double c0, double varC0,
+                               double tau2,
+                               double p,
+                               double alpha, double psi2,
+                               double hyp_A1, double hyp_A2,
+                               double hyp_b1, double hyp_b2,
+                               double hyp_gamma1, double hyp_gamma2,
+                               double hyp_lambda1, double hyp_lambda2,
+                               double eps_gamma)
+{
+  double b_start = 0;
+  
+  // allocate output matrices
+  int n = y.n_elem ;
+  arma::mat out_c(Nrep, n+1) ;
+  arma::mat out_A = arma::zeros(Nrep, n) ;
+  arma::vec out_b(Nrep) ;
+  arma::vec out_gamma(Nrep) ;
+  arma::vec out_lambda(Nrep) ;
+  arma::mat cluster = arma::zeros(Nrep, n) ;
+  
+  // initialize the chain
+  out_c(0,0) = c0 ;
+  out_b(0) = b_start ;
+  out_gamma(0) = gamma_start ;
+  out_lambda(0) = lambda_start ;
+  
+  // other quantities
+  arma::vec filter_mean(n) ;
+  arma::vec filter_var(n) ;
+  arma::vec R(n) ; arma::vec a(n) ;
+  double back_mean; double back_var ;
+  double sigma2 ;
+  
+  arma::vec z; arma::vec sq ; 
+  
+  double oldgamma; double newgamma ;
+  double ratio ;
+  
+  arma::vec AA = arma::zeros(n) ;
+  arma::vec clus_tmp = arma::zeros(n); 
+  arma::vec A_tmp = arma::zeros(n) ;
+  
+
+  cluster.row(0) = clus ;
+  out_A(0,1) = 4 ; out_A(0,2) = 10 ;
+  
+  
+  for(int i = 0; i < Nrep - 1; i++)
+  {
+    sigma2 = 1/out_lambda(i) ;
+    for(int j = 0; j < n; j++) { AA(j) =  out_A(i, cluster(i,j)) ; }
+    
+    // sampling c
+    R(0) = tau2 + pow(out_gamma(i), 2) * varC0 ;
+    filter_mean(0) = (sigma2 * AA(0) + R(0) * (y(0) - out_b(i))) / (sigma2 + R(0)) ;
+    filter_var(0) = sigma2 * R(0) /  (sigma2 + R(0)) ;
+    
+    for(int j = 1; j < n; j++)
+    {
+      R(j) = pow(out_gamma(i), 2) * filter_var(j-1) + tau2 ;
+      a(j) = out_gamma(i) * filter_mean(j-1) + AA(j) ;
+      
+      filter_mean(j) = a(j) + R(j) / (R(j) + sigma2) * (y(j) - out_b(i) - a(j)) ;
+      filter_var(j) = R(j) - pow(R(j), 2) / (R(j) + sigma2) ;
+    }
+    out_c(i+1, n) = R::rnorm(filter_mean(n-1), filter_var(n-1)) ;
+    
+    for(int j = n-2; j > -1; j--)
+    {
+      back_mean = filter_mean(j) + out_gamma(i) * filter_var(j) / R(j+1) * (out_c(i+1, j+2) - a(j+1)) ;
+      back_var = filter_var(j) - pow(out_gamma(i) * filter_var(j), 2) / R(j+1) ;
+      
+      out_c(i+1, j+1) = R::rnorm(back_mean, back_var) ;
+    }
+    back_mean = out_gamma(i) * varC0 / (varC0 + tau2) * out_c(i+1, 1) ;
+    back_var = varC0 - pow(out_gamma(i) * varC0, 2) / R(0) ;
+    out_c(i+1, 0) = R::rnorm(back_mean, back_var) ;
+    
+    
+    // sampling lambda (precision)
+    out_lambda(i+1) = out_lambda(i) ;
+    // sampling b
+    out_b(i+1) = out_b(i) ;
+    
+    //MH per gamma: random walk
+    out_gamma(i+1) = out_gamma(i) ;
+    
+    // Sampling of cluster and cluster parameters
+    cluster.row(i+1) = cluster.row(i) ; 
+    out_A.row(i+1) = out_A.row(i) ;
+    
+    
+ //   if(i % 100 == 0) { Rcout << "Iteraz. " << i << "\n" ; }
+  }
+  return Rcpp::List::create(Rcpp::Named("calcium") = out_c,
+                            Rcpp::Named("A") = out_A,
+                            Rcpp::Named("b") = out_b,
+                            Rcpp::Named("gamma") = out_gamma,
+                            Rcpp::Named("lambda") = out_lambda,
+                            Rcpp::Named("cluster") = cluster,
+                            Rcpp::Named("AA") = AA);
+}
+
+
+
+
 
 
 
