@@ -78,11 +78,11 @@ double missing_value(arma::vec x, arma::vec y)
 
 
 // [[Rcpp::export]]
-Rcpp::List polya_urn(int j, 
-                     arma::vec y, arma::vec cc, 
-                     arma::vec clus, arma::vec A,
+Rcpp::List polya_urn(int j, arma::vec clus, 
+                     double y, 
+                     arma::vec A, double b, double cc, 
+                     double gamma, double lambda,
                      double sigma2, double tau2,
-                     double b, double gamma, double lambda,
                      double p,
                      double alpha, double psi2)
 {
@@ -93,10 +93,6 @@ Rcpp::List polya_urn(int j,
   arma::uvec ids = find(clus > 0) ;
   arma::vec tmp = arma::unique( clus(ids) ) ; // unique labels
   double n_clus = tmp.n_elem ; // number of clusters 
-  
-  Rcout << "cluster ids " << tmp << "\n" ;
-  Rcout << "Max clus " << max_clus << "\n" ;
-  Rcout << "N clus " << n_clus << "\n" ;
   
   if(max_clus > n_clus) // it means that there is a "hole" in the label sequence
   {
@@ -109,12 +105,12 @@ Rcpp::List polya_urn(int j,
       clus.elem(ids).fill(k - 1) ;
       A(k-1) = A(k) ;
     }
-    A(max_clus +1) = 0 ;
+    A(max_clus) = 0 ;
   }
   
-  double pr0 = p * R::dnorm(y(j), b + gamma * cc(j), std::sqrt(sigma2 + tau2), false) ;
-  double pr_new = (1-p) * alpha * marginal(y(j), cc(j), b, gamma, sigma2 + tau2, psi2) ;
-  
+  double pr0 = p * R::dnorm(y, b + gamma * cc, std::sqrt(sigma2 + tau2), false) ;
+  double pr_new = (1-p) * alpha * marginal(y, cc, b, gamma, sigma2 + tau2, psi2) ;
+
   arma::vec prob(n_clus + 2);
   prob(0) = pr0 ;
   
@@ -124,7 +120,7 @@ Rcpp::List polya_urn(int j,
     for(int k = 1; k < n_clus + 1; k++)
     {
       nj(k-1) = std::count(clus.begin(), clus.end(), k) ;
-      prob(k) = nj(k-1) * (1-p) * R::dnorm(y(j), b + gamma * cc(j) + A(k), std::sqrt(sigma2 + tau2), false) ;
+      prob(k) = nj(k-1) * (1-p) * R::dnorm(y, b + gamma * cc + A(k), std::sqrt(sigma2 + tau2), false) ;
     }
   }
   
@@ -135,10 +131,9 @@ Rcpp::List polya_urn(int j,
   
   if(clus(j) == n_clus + 1)
   {
-    A(n_clus + 1) = gen_truncnorm(psi2 / (psi2 + sigma2 + tau2) * (y(j) - b - gamma * cc(j)), 
+    A(n_clus + 1) = gen_truncnorm(psi2 / (psi2 + sigma2 + tau2) * (y - b - gamma * cc), 
         std::sqrt((sigma2 + tau2) * psi2 / (psi2 + sigma2 + tau2) )) ;
   }
-  
   
   return Rcpp::List::create(Rcpp::Named("A") = A.t(),
                             Rcpp::Named("cluster") = clus.t());
