@@ -25,9 +25,12 @@ sim_data <- function(n, lambda, time_spike, b, gamma, prob, par)
 data <- sim_data(n = 500, lambda = 10, time_spike = c(50,52, 140, 180, 250, 350, 420, 421, 460),
                  gamma = 0.8, b = 0,
                  prob = c(0.4, 0.6), par = c(4, 10))
+y = data$y
+#plot(y, type = "l")
+clus = data$s
+clus[clus>0] = data$k
 
-
-debug = calcium_gibbs_debug(Nrep = 5000, y = data$y, 
+debug = calcium_gibbs_debug(Nrep = 3, y = data$y, 
                     clus = t(clus),
                     gamma_start = 0.3, lambda_start = 13, 
                     c0 = 0, varC0 = 1, tau2 = 0.0001, p = 0.995, 
@@ -55,8 +58,81 @@ mean(debug$b[-burnin])
 plot(1:length(debug$b[-burnin]), debug$b[-burnin], type = "l")
 lines(1:length(debug$b[-burnin]), cumsum(debug$b[-burnin])/1:length(debug$b[-burnin]), col =2)
 
-
 mean(debug$gamma[-burnin])
 plot(1:length(debug$gamma[-burnin]), debug$gamma[-burnin], type = "l")
 lines(1:length(debug$gamma[-burnin]), cumsum(debug$gamma[-burnin])/1:length(debug$gamma[-burnin]), col =2)
+
+
+
+nrep=1000
+burnin = 1:500
+plot(1:n, y, type = "l")
+AA = matrix(0,nrep,n)
+for(i in 1:nrep)
+{
+  AA[i, debug$clus[i,] >0] = debug$A[i, debug$clus[i, debug$clus[i,] >0]+1]
+}
+
+calcium = matrix(0, nrep, n+1)
+for(i in 1:nrep)
+{
+  for(j in 2:(n+1))
+  {
+    calcium[i,j] = calcium[i,j-1] * mean(debug$gamma[-burnin]) + AA[i,j-1]
+  }
+}
+
+plot(1:n, y, type = "l")
+lines(1:n, mean(debug$b[-burnin]) + colMeans(calcium)[2:(n+1)], col = "turquoise3", lwd = 1.5)
+
+abline(v = which( apply(debug$clus[-burnin,], 2, function(x) mean(x != 0))>0.95), lty = 3, col = "salmon")
+
+
+which(apply(debug$A, 2, function(x) sum(!is.na(x))>0))
+debug$A = prova$A[,1:20]
+
+debug$A[500:600,1:4]
+debug$A[is.na(debug$A)] = 0
+maxA = apply(debug$A, 1, max)
+mean(maxA)
+
+max2A = t(apply(debug$A, 1, sort))
+colMeans(max2A)
+
+
+
+
+
+
+
+
+
+
+
+
+
+data <- sim_data(n = 200, lambda = 10, time_spike = c(10,25,50,52, 140, 180),
+                 gamma = 0.8, b = 0,
+                 prob = c(0.4, 0.6), par = c(4, 10))
+y = data$y
+#plot(y, type = "l")
+clus = data$s
+clus[clus>0] = data$k
+
+
+pu <- polya_urn(j=180, y = y, cc = data$c, clus = clus, A = c(0,4,10,0,0,0), sigma2 = 1,
+          tau2 = 1, b = 0, gamma = 0.8, lambda = 10, p = 0.995, alpha = 1, psi2 = 1)
+pu$A
+clus[1:200]
+c(pu$cluster)
+
+
+
+
+
+
+
+
+
+
 

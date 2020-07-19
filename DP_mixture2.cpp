@@ -14,7 +14,7 @@ double loglik(arma::vec y, arma::rowvec cc, arma::vec A,
 {
   int n = y.n_elem;
   arma::vec llik(n);
-
+  
   for(int k = 0; k < n; k++) { 
     llik(k) = R::dnorm(y(k), b + gamma * cc(k) + A(k), std::sqrt(lambda), true) ;
   }
@@ -74,6 +74,74 @@ double missing_value(arma::vec x, arma::vec y)
     if(std::count(y.begin(), y.end(), lookfor) == 0) { out = lookfor ;}
   }
   return(out) ;
+}
+
+
+// [[Rcpp::export]]
+Rcpp::List polya_urn(int j, 
+                     arma::vec y, arma::vec cc, 
+                     arma::vec clus, arma::vec A,
+                     double sigma2, double tau2,
+                     double b, double gamma, double lambda,
+                     double p,
+                     double alpha, double psi2)
+{
+  clus(j) = (-99) ; // remove the j-th element
+  
+  double max_clus = clus.max() ; // max label of the cluster
+  
+  arma::uvec ids = find(clus > 0) ;
+  arma::vec tmp = arma::unique( clus(ids) ) ; // unique labels
+  double n_clus = tmp.n_elem ; // number of clusters 
+  
+  Rcout << "cluster ids " << tmp << "\n" ;
+  Rcout << "Max clus " << max_clus << "\n" ;
+  Rcout << "N clus " << n_clus << "\n" ;
+  
+  if(max_clus > n_clus) // it means that there is a "hole" in the label sequence
+  {
+    arma::vec v = arma::linspace(1, max_clus, max_clus) ;
+    double diff = missing_value(v, tmp);
+    
+    for(int k = diff + 1 ; k < max_clus +1; k++)
+    {
+      arma::uvec ids = find(clus == k) ;
+      clus.elem(ids).fill(k - 1) ;
+      A(k-1) = A(k) ;
+    }
+    A(max_clus +1) = 0 ;
+  }
+  
+  double pr0 = p * R::dnorm(y(j), b + gamma * cc(j), std::sqrt(sigma2 + tau2), false) ;
+  double pr_new = (1-p) * alpha * marginal(y(j), cc(j), b, gamma, sigma2 + tau2, psi2) ;
+  
+  arma::vec prob(n_clus + 2);
+  prob(0) = pr0 ;
+  
+  if(n_clus > 0)
+  {
+    arma::vec nj(n_clus);
+    for(int k = 1; k < n_clus + 1; k++)
+    {
+      nj(k-1) = std::count(clus.begin(), clus.end(), k) ;
+      prob(k) = nj(k-1) * (1-p) * R::dnorm(y(j), b + gamma * cc(j) + A(k), std::sqrt(sigma2 + tau2), false) ;
+    }
+  }
+  
+  prob(n_clus + 1) = pr_new ; 
+  
+  arma::vec clusters_id = arma::linspace(0, n_clus + 1, n_clus + 2);
+  clus(j) = RcppArmadillo::sample( clusters_id, 1, false, prob )[0] ;
+  
+  if(clus(j) == n_clus + 1)
+  {
+    A(n_clus + 1) = gen_truncnorm(psi2 / (psi2 + sigma2 + tau2) * (y(j) - b - gamma * cc(j)), 
+        std::sqrt((sigma2 + tau2) * psi2 / (psi2 + sigma2 + tau2) )) ;
+  }
+  
+  
+  return Rcpp::List::create(Rcpp::Named("A") = A.t(),
+                            Rcpp::Named("cluster") = clus.t());
 }
 
 
@@ -175,10 +243,10 @@ Rcpp::List calcium_gibbs_debug(int Nrep, arma::vec y,
                          AA, out_b(i+1), 
                          newgamma, out_lambda(i+1),
                          hyp_gamma1, hyp_gamma2) -
-                  logpost(y, out_c.row(i+1), 
-                          AA, out_b(i+1), 
-                          oldgamma, out_lambda(i+1),
-                          hyp_gamma1, hyp_gamma2) ) ;
+                           logpost(y, out_c.row(i+1), 
+                                   AA, out_b(i+1), 
+                                   oldgamma, out_lambda(i+1),
+                                   hyp_gamma1, hyp_gamma2) ) ;
     
     if(R::runif(0, 1) < ratio) oldgamma = newgamma ;
     out_gamma(i+1) = oldgamma ;
@@ -187,61 +255,10 @@ Rcpp::List calcium_gibbs_debug(int Nrep, arma::vec y,
     // Sampling of cluster and cluster parameters
     arma::rowvec clus_tmp(n); 
     arma::rowvec A_tmp(n) ;
-    clus_tmp = cluster.row(i) ;
+    clus_tmp = cluster.row(i+1) ;
     A_tmp = out_A.row(i) ;
     
     // Polya-Urn
-    for(int j = 0; j < n; j++)
-    {
-      clus_tmp(j) = (-99) ; // remove the j-th element
-      
-      double max_clus = clus_tmp.max() ; // max label of the cluster
-      
-      arma::uvec ids = find(clus_tmp > 0) ;
-      arma::vec tmp = arma::unique( clus_tmp(ids) ) ; // unique labels
-      double n_clus = tmp.n_elem ; // number of clusters 
-      
-      if(max_clus > n_clus) // it means that there is a "hole" in the label sequence
-      {
-        arma::vec v = arma::linspace(1, max_clus, max_clus) ;
-        double diff = missing_value(v, tmp);
-        
-       for(int k = diff + 1 ; k < max_clus +1; k++)
-      {
-        arma::uvec ids = find(clus_tmp == k) ;
-          clus_tmp.elem(ids).fill(k - 1) ;
-          A_tmp(k-1) = A_tmp(k) ;
-        }
-        A_tmp(max_clus +1) = 0 ;
-      }
-      
-      double pr0 = p * R::dnorm(y(j), out_b(i+1) + out_gamma(i+1) * out_c(i+1, j), std::sqrt(sigma2 + tau2), false) ;
-      double pr_new = (1-p) * alpha * marginal(y(j), out_c(i+1, j), out_b(i+1), out_gamma(i+1), sigma2 + tau2, psi2) ;
-      
-      arma::vec prob(n_clus + 2);
-      prob(0) = pr0 ;
-      
-      if(n_clus > 0)
-      {
-        arma::vec nj(n_clus);
-        for(int k = 1; k < n_clus + 1; k++)
-        {
-          nj(k-1) = std::count(clus_tmp.begin(), clus_tmp.end(), k) ;
-          prob(k) =  nj(k-1) * (1-p) * R::dnorm(y(j), out_b(i+1) + out_gamma(i+1) * out_c(i+1, j) + A_tmp(k), std::sqrt(sigma2 + tau2), false) ;
-        }
-      }
-        
-      prob(n_clus + 1) = pr_new ; 
-      
-      arma::vec clusters_id = arma::linspace(0, n_clus + 1, n_clus + 2);
-      clus_tmp(j) = RcppArmadillo::sample( clusters_id, 1, false, prob )[0] ;
-    
-      if(clus_tmp(j) == n_clus + 1)
-      {
-        A_tmp(n_clus + 1) = gen_truncnorm(psi2 / (psi2 + sigma2 + tau2) * (y(j) - out_b(i+1) - out_gamma(i+1) * out_c(i+1, j)), 
-              std::sqrt((sigma2 + tau2) * psi2 / (psi2 + sigma2 + tau2) )) ;
-      }
-    }
     cluster.row(i+1) = clus_tmp ;
     out_A.row(i+1) = A_tmp ;
     
@@ -259,10 +276,10 @@ Rcpp::List calcium_gibbs_debug(int Nrep, arma::vec y,
       nj(k-1) = std::count(cluster.row(i+1).begin(), cluster.row(i+1).end(), k) ; 
       arma::uvec idk = find( cluster.row(i+1) == k ) ;
       ssum(k-1) = arma::accu( lincomb(idk) ) ;
-  
+      
       out_A(i+1, k) = gen_truncnorm( psi2 * ssum(k-1) / (nj(k-1) * psi2 + sigma2 + tau2), std::sqrt((sigma2 + tau2) * psi2 / (nj(k-1) * psi2 + sigma2 + tau2) )) ;
     }
-
+    
     
     if(i % 100 == 0) { Rcout << "Iteraz. " << i << "\n" ; }
   }
