@@ -1,6 +1,6 @@
 library(Rcpp)
 library(RcppDist)
-sourceCpp('DP_mixture_newkalman.cpp')
+sourceCpp('calcium_DP_mixture.cpp')
 
 # data <- read.csv("data.csv", header = FALSE)
 # str(data)
@@ -50,15 +50,23 @@ data$k
 # cll = rep(0, length(y))
 # cll[pr] = 1
 
+A_start = rep(0,500)
+A_start[2] = 4
+A_start[3] = 10
+
 nrep = 1000
 debug = calcium_gibbs_debug(Nrep = nrep, y = y, 
-                            cl = clus, cc0 = c(0, data$c),
+                            cal = c(0, data$c),
+                            cl = clus, A_start = A_start,
                             b_start = 0,
                     gamma_start = 0.8, lambda_start = 10, 
-                    c0 = 0, varC0 = 0.4, tau2 = 0.00001, p = 0.999, 
+                    p_start = 0.997, 
+                    c0 = 0, varC0 = 0.4, tau2 = 0.00001, 
                     alpha = 1, psi2 = 1, 
                     hyp_A1 = 1, hyp_A2 = 1, hyp_b1 = 0, hyp_b2 = 1, 
-                    hyp_gamma1 = 1, hyp_gamma2 = 2, hyp_lambda1 = 10, hyp_lambda2 = 1, eps_gamma = 0.2)
+                    hyp_gamma1 = 1, hyp_gamma2 = 2, hyp_lambda1 = 10, hyp_lambda2 = 1, 
+                    hyp_p1 = 99, hyp_p2 = 1,
+                    eps_gamma = 0.2)
 
 
 str(debug) #1202
@@ -75,9 +83,12 @@ lines(1:length(debug$b), cumsum(debug$b)/1:length(debug$b), col =2)
 plot(1:length(debug$gamma), debug$gamma, type = "l", xlab = "iterazioni", ylab = "gamma")
 lines(1:length(debug$gamma), cumsum(debug$gamma)/1:length(debug$gamma), col =2)
 
+plot(1:length(debug$p), debug$p, type = "l")
+lines(1:length(debug$p), cumsum(debug$p)/1:length(debug$p), col =2)
+
 
 plot(data$c, type = "l")
-lines(debug$calcium[,1], col=5)
+#lines(debug$calcium[,1], col=5)
 lines(debug$calcium[,1000], col=3)
 
 
@@ -92,20 +103,19 @@ lines(0:n, c(0,data$c), col = 2)
 
 
 obs = 1:250
-iter = 600:1000
+iter = 1:100
 image(1:(length(iter)), 1:(length(obs)), t(debug$cluster[obs,iter]), 
       axes = F,
       xlab = "iterazioni", ylab = "osservazione",
-      col = c("#ffffff", hcl.colors(10, "YlOrRd", rev = FALSE)))
+      col = c("#ffffff", hcl.colors(10, "YlOrRd", rev = T)))
 axis(1, at = seq(1, max(iter), by = 10))
 axis(2, at = seq(1,max(obs), by = 1))
 
 obs = 251:500
-iter = 600:1000
 image(1:(length(iter)), 1:(length(obs)), t(debug$cluster[obs,iter]), 
       axes = F,
       xlab = "iterazioni", ylab = "osservazione",
-      col = c("#ffffff", hcl.colors(10, "YlOrRd", rev = FALSE)))
+      col = c("#ffffff", hcl.colors(10, "YlOrRd", rev = T)))
 axis(1, at = seq(1, max(iter), by = 10))
 axis(2, at = seq(1,length(obs), by = 1), labels = obs)
 

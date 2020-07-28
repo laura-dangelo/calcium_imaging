@@ -27,7 +27,7 @@ mean(y[pr])
 
 
 out = list()
-out$calcium = rep(0, length(y))
+out$calcium = matrix(0,length(y)+1, 1)
 out$cluster = matrix(clus, length(y), 1)
 out$A = matrix(0, length(y), 1)
 out$A[2,1] = mean(y[pr])
@@ -35,16 +35,23 @@ out$AA = matrix(NA, length(y), 1)
 out$b = 0
 out$gamma = 0.4
 out$lambda = 40
+out$p = 0.997
 
-nrep = 200
+nrep = 20
 debug = calcium_gibbs_debug(Nrep = nrep, y = y, 
+                            cal = out$calcium[,ncol(out$cluster)],
                             cl = out$cluster[,ncol(out$cluster)], A_start = out$A[,ncol(out$cluster)],
                             b_start = out$b[length(out$b)],
                             gamma_start = out$gamma[length(out$b)], lambda_start = out$lambda[length(out$b)], 
-                            c0 = 0, varC0 = 0.4, tau2 = 0.00001, p = 0.9999, 
+                            p_start = out$p[length(out$b)],
+                            c0 = 0, varC0 = 0.4, tau2 = 0.00001, 
                             alpha = 1, psi2 = 1, 
-                            hyp_A1 = 1, hyp_A2 = 1, hyp_b1 = 0, hyp_b2 = 1, 
-                            hyp_gamma1 = 1, hyp_gamma2 = 2, hyp_lambda1 = 10, hyp_lambda2 = 1, eps_gamma = 0.2)
+                            hyp_A1 = 1, hyp_A2 = 1, 
+                            hyp_b1 = 0, hyp_b2 = 1, 
+                            hyp_gamma1 = 1, hyp_gamma2 = 2, 
+                            hyp_lambda1 = 10, hyp_lambda2 = 1, 
+                            hyp_p1 = 99, hyp_p2 = 1,
+                            eps_gamma = 0.2)
 
 
 str(debug) #1202
