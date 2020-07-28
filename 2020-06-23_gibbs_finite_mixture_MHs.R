@@ -241,7 +241,7 @@ gibbs_calcium <- function(nrep, y,
       clus_tmp[j] = sample( 1:(max(unique(clus_tmp[-j][clus_tmp[-j]>0]))+1), 1, prob = c(prob_c, prob_new) )
       
       cluster[i+1, out_s[i+1,]>0] = clus_tmp
-      if(clus_tmp[j] == max(unique(clus_tmp[-j][clus_tmp[-j]>0]))+1) 
+      if(clus_tmp[j] == max(unique(clus_tmp[-j][clus_tmp[-j]>0]))+1)  
         {out_A[i+1,clus_tmp[j]] = rtruncnorm( 1,
                                                 a = 0, b = Inf, 
                                                 mean = psi2 * (y[out_s[i+1,]>0][j] - out_b[i+1] - out_gamma[i+1] * out_c[i+1, j]) / (psi2 + sigma2),
