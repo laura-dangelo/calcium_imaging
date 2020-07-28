@@ -29,20 +29,10 @@ loglik <- function(y, cc, c_0, s, A, b, gamma, lambda)
 {
   n = length(y)
   sum(dnorm(y, mean = b + gamma * c(c_0, cc[1:(n-1)]) + A * s, sd = 1/sqrt(lambda), log = TRUE))
-}
-
-# ### verosimiglianza per A
-# A.seq = seq(0.1, 10, length.out = 500)
-# lik.seq = sapply(A.seq, function(x) loglik(y = y, cc = data$c, c_0 = 0,
-#                                            s = data$s, b = 2,
-#                                            A = x, gamma = 0.5, lambda = 10))
-# plot(A.seq, lik.seq, type = "l")
-# abline(v = A.seq[which.max(lik.seq)])
+} 
 
 logprior_A <- function(A, hyp_A1, hyp_A2) dgamma(A, hyp_A1, hyp_A2, log = TRUE)
 logprior_gamma <- function(gamma, hyp_gamma1, hyp_gamma2) dbeta(gamma, hyp_gamma1, hyp_gamma2, log = TRUE)
-# logprior_lambda <- function(lambda, hyp_lambda1, hyp_lambda2) dgamma(lambda, hyp_lambda1, hyp_lambda2, log = TRUE)
-# logprior_b <- function(b, hyp_b1, hyp_b2) dnorm(b, mean = hyp_b1, sd = hyp_b2, log = TRUE)
 
 logprior_b_lambda <- function(b, lambda, hyp_b1, hyp_b2, hyp_lambda1, hyp_lambda2)
 {
@@ -57,27 +47,6 @@ logpost <- function(y, cc, c_0, s, A, b, gamma, lambda,
     logprior_gamma(gamma, hyp_gamma1, hyp_gamma2) + 
     logprior_b_lambda(b, lambda, hyp_b1, hyp_b2, hyp_lambda1, hyp_lambda2)
 }
-
-### posteriori per A
-# A.seq = seq(0.1, 10, length.out = 500)
-# post.seq = sapply(A.seq, function(x) logpost(y = y, cc = data$c, c_0 = 0,
-#                                            s = data$s,
-#                                            A = x, gamma = 0.8, 
-#                                            b = 2, lambda = 10,
-#                                            hyp_A1 = 3, hyp_A2 = 1, hyp_gamma1 = 5, hyp_gamma2 = 2, 
-#                                            hyp_lambda1 = 10, hyp_lambda2 = 1, hyp_b1 = 1, hyp_b2 = 1))
-# plot(A.seq, post.seq, type = "l")
-# abline(v = A.seq[which.max(post.seq)], lty = 2)
-
-### posteriori per gamma
-# gamma.seq = seq(0.2, 0.998, length.out = 500)
-# post.seq = sapply(gamma.seq, function(x) logpost(y = y, cc = data$c, c_0 = 0,
-#                                            s = data$s,
-#                                            A = 5, gamma = x, b = 2, lambda = 10,
-#                                            hyp_A1 = 3, hyp_A2 = 1, hyp_gamma1 = 5, hyp_gamma2 = 2, 
-#                                            hyp_lambda1 = 10, hyp_lambda2 = 1, hyp_b1 = 1, hyp_b2 = 1))
-# plot(gamma.seq, post.seq, type = "l")
-# abline(v = gamma.seq[which.max(post.seq)], lty = 3)
 
 #---------------------# #---------------------# #---------------------# #---------------------# 
 #---------------------# #---------------------# #---------------------# #---------------------# 
