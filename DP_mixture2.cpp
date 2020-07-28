@@ -78,9 +78,9 @@ double missing_value(arma::vec x, arma::vec y)
 
 
 // [[Rcpp::export]]
-Rcpp::List polya_urn(int j, arma::vec clus, 
+Rcpp::List polya_urn(int j, arma::rowvec clus, 
                      double y, 
-                     arma::vec A, double b, double cc, 
+                     arma::rowvec A, double b, double cc, 
                      double gamma, double lambda,
                      double sigma2, double tau2,
                      double p,
@@ -135,11 +135,41 @@ Rcpp::List polya_urn(int j, arma::vec clus,
         std::sqrt((sigma2 + tau2) * psi2 / (psi2 + sigma2 + tau2) )) ;
   }
   
-  return Rcpp::List::create(Rcpp::Named("A") = A.t(),
-                            Rcpp::Named("cluster") = clus.t());
+  return Rcpp::List::create(Rcpp::Named("A") = A,
+                            Rcpp::Named("cluster") = clus);
 }
 
 
+// [[Rcpp::export]]
+arma::vec polya_urn_loop(arma::rowvec clus, 
+                          arma::vec y, 
+                          arma::rowvec A, double b, arma::rowvec cc, 
+                          double gamma, double lambda,
+                          double sigma2, double tau2,
+                          double p,
+                          double alpha, double psi2)
+{
+  int n = y.n_elem ;
+  Rcpp::List output ;
+  NumericVector A1(n) ;
+  A1 = A ;
+  NumericVector clus1(n) ;
+  clus1 = clus ;
+  
+  for(int j = 0; j < n; j++)
+  {
+    output = polya_urn(j, clus1, y(j), 
+                        A1, b, cc(j), 
+                        gamma, lambda,
+                        sigma2, tau2,
+                        p, alpha, psi2) ;
+
+    A1 = output["A"] ;
+    clus1 = output["cluster"] ;
+  }
+  arma::vec out = as<arma::vec>(clus1);
+  return {out};
+}
 
 
 // [[Rcpp::export]]
@@ -166,7 +196,6 @@ Rcpp::List calcium_gibbs_debug(int Nrep, arma::vec y,
   arma::vec out_gamma(Nrep) ;
   arma::vec out_lambda(Nrep) ;
   arma::mat cluster(Nrep, n) ;
-  arma::mat piango(Nrep, n) ;
   
   // initialize the chain
   out_c(0,0) = c0 ;
@@ -187,7 +216,7 @@ Rcpp::List calcium_gibbs_debug(int Nrep, arma::vec y,
   double ratio ;
   
   arma::vec AA = arma::zeros(n) ;
-  
+
   cluster.row(0) = clus ;
   
   for(int i = 0; i < Nrep - 1; i++)
@@ -248,14 +277,22 @@ Rcpp::List calcium_gibbs_debug(int Nrep, arma::vec y,
     
     
     // Sampling of cluster and cluster parameters
-    arma::rowvec clus_tmp(n); 
-    arma::rowvec A_tmp(n) ;
-    clus_tmp = cluster.row(i+1) ;
-    A_tmp = out_A.row(i) ;
-    
     // Polya-Urn
-    cluster.row(i+1) = clus_tmp ;
-    out_A.row(i+1) = A_tmp ;
+    arma::rowvec output_polyaurn(n) ;
+    output_polyaurn = polya_urn_loop(cluster.row(i), y, 
+                                     out_A.row(i), out_b(i+1), out_c.row(i+1), 
+                                     out_gamma(i+1), out_lambda(i+1),
+                                     sigma2, tau2, p,
+                                     alpha, psi2).t() ;
+    //Rcout << "out " << output_polyaurn << "\n" ;
+    
+    for(int l = 0; l < n; l++) 
+    { 
+      int pp = 1 ;
+      cluster(i+1,l) = pp ;
+    }
+
+//    Rcout << "?. " << output_polyaurn << "\n" ;
     
     // sampling of parameters A1,...,Ak
     arma::vec tmp = arma::unique(cluster.row(i+1)).t() ; // unique labels

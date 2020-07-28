@@ -171,6 +171,7 @@ arma::vec polya_urn(const arma::vec& y, arma::vec cluster, const arma::vec& cc,
 
 // [[Rcpp::export]]
 Rcpp::List calcium_gibbs_debug(int Nrep, arma::vec y,
+                               arma::vec cl, arma::vec cc0 ,
                                double gamma_start, double lambda_start,
                                double c0, double varC0,
                                double tau2,
@@ -211,6 +212,9 @@ Rcpp::List calcium_gibbs_debug(int Nrep, arma::vec y,
   
   arma::vec AA = arma::zeros(n) ;
   
+  cluster.col(0) = cl ;
+  out_A(1,0) = 4; out_A(2,0) = 10 ;
+  out_c.col(0) = cc0 ;
   
   for(int i = 0; i < Nrep - 1; i++)
   {
@@ -274,18 +278,20 @@ Rcpp::List calcium_gibbs_debug(int Nrep, arma::vec y,
     
     // Sampling of cluster and cluster parameters
     // Polya-Urn
-    int check = 0 ;
+    /*int check = 0 ;
     cluster.col(i+1) = polya_urn(y, cluster.col(i), out_c.col(i+1),
                                   out_A.col(i), out_b(i+1), out_gamma(i+1), 
                                   p,
                                   sigma2, tau2,
-                                  alpha, psi2, check) ;
+                                  alpha, psi2, check) ;*/
+    cluster.col(i+1) = cluster.col(i) ; 
 
      
     // sampling of parameters A1,...,Ak
     arma::vec line(n); line = cluster.col(i+1) ;
     arma::vec non0 = line.elem( find( line > 0 ) );
-    arma::vec tmp2 = arma::unique( non0 ) ; // unique labels
+    arma::vec tmp2 = arma::unique( non0 ) ; // unique labels 
+
     
     double n_clus = tmp2.n_elem ; // number of clusters (n.unique \{0}) ...
     arma::vec nj(n_clus) ;

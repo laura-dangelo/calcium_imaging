@@ -195,7 +195,7 @@ Rcpp::List calcium_gibbs_debug(int Nrep, arma::vec y,
     {
       clus_tmp(j) = (-99) ; // remove the j-th element
       
-      double max_clus = clus_tmp.max() ; // max label of the cluster
+      double max_clus = clus.max() ; // max label of the cluster
       
       arma::uvec ids = find(clus_tmp > 0) ;
       arma::vec tmp = arma::unique( clus_tmp(ids) ) ; // unique labels
@@ -206,17 +206,17 @@ Rcpp::List calcium_gibbs_debug(int Nrep, arma::vec y,
         arma::vec v = arma::linspace(1, max_clus, max_clus) ;
         double diff = missing_value(v, tmp);
         
-       for(int k = diff + 1 ; k < max_clus +1; k++)
-      {
-        arma::uvec ids = find(clus_tmp == k) ;
+        for(int k = diff + 1 ; k < max_clus +1; k++)
+        {
+          arma::uvec ids = find(clus_tmp == k) ;
           clus_tmp.elem(ids).fill(k - 1) ;
           A_tmp(k-1) = A_tmp(k) ;
         }
-        A_tmp(max_clus +1) = 0 ;
+        A_tmp(max_clus) = 0 ;
       }
       
-      double pr0 = p * R::dnorm(y(j), out_b(i+1) + out_gamma(i+1) * out_c(i+1, j), std::sqrt(sigma2 + tau2), false) ;
-      double pr_new = (1-p) * alpha * marginal(y(j), out_c(i+1, j), out_b(i+1), out_gamma(i+1), sigma2 + tau2, psi2) ;
+      double pr0 = p * R::dnorm(y(j), out_b(i+1) + out_gamma(i+1) * out_c(i+1,j), std::sqrt(sigma2 + tau2), false) ;
+      double pr_new = (1-p) * alpha * marginal(y(j), out_c(i+1,j), out_b(i+1), out_gamma(i+1), sigma2 + tau2, psi2) ;
       
       arma::vec prob(n_clus + 2);
       prob(0) = pr0 ;
@@ -227,23 +227,22 @@ Rcpp::List calcium_gibbs_debug(int Nrep, arma::vec y,
         for(int k = 1; k < n_clus + 1; k++)
         {
           nj(k-1) = std::count(clus_tmp.begin(), clus_tmp.end(), k) ;
-          prob(k) =  nj(k-1) * (1-p) * R::dnorm(y(j), out_b(i+1) + out_gamma(i+1) * out_c(i+1, j) + A_tmp(k), std::sqrt(sigma2 + tau2), false) ;
+          prob(k) = nj(k-1) * (1-p) * R::dnorm(y(j), out_b(i+1) + out_gamma(i+1) * out_c(i+1,j) + A_tmp(k), std::sqrt(sigma2 + tau2), false) ;
         }
       }
-        
+      
       prob(n_clus + 1) = pr_new ; 
       
       arma::vec clusters_id = arma::linspace(0, n_clus + 1, n_clus + 2);
       clus_tmp(j) = RcppArmadillo::sample( clusters_id, 1, false, prob )[0] ;
-    
+      
       if(clus_tmp(j) == n_clus + 1)
       {
-        A_tmp(n_clus + 1) = gen_truncnorm(psi2 / (psi2 + sigma2 + tau2) * (y(j) - out_b(i+1) - out_gamma(i+1) * out_c(i+1, j)), 
-              std::sqrt((sigma2 + tau2) * psi2 / (psi2 + sigma2 + tau2) )) ;
+        A_tmp(n_clus + 1) = gen_truncnorm(psi2 / (psi2 + sigma2 + tau2) * (y(j) - out_b(i+1) - out_gamma(i+1) * out_c(i+1,j)), 
+          std::sqrt((sigma2 + tau2) * psi2 / (psi2 + sigma2 + tau2) )) ;
       }
     }
     cluster.row(i+1) = clus_tmp ;
-    out_A.row(i+1) = A_tmp ;
     
     // sampling of parameters A1,...,Ak
     arma::vec tmp = arma::unique(cluster.row(i+1)).t() ; // unique labels

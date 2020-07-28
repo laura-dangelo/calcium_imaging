@@ -96,7 +96,7 @@ iter = 600:1000
 image(1:(length(iter)), 1:(length(obs)), t(debug$cluster[obs,iter]), 
       axes = F,
       xlab = "iterazioni", ylab = "osservazione",
-      col = c("#ffffff", hcl.colors(12, "YlOrRd", rev = FALSE)))
+      col = c("#ffffff", hcl.colors(10, "YlOrRd", rev = FALSE)))
 axis(1, at = seq(1, max(iter), by = 10))
 axis(2, at = seq(1,max(obs), by = 1))
 
@@ -105,7 +105,7 @@ iter = 600:1000
 image(1:(length(iter)), 1:(length(obs)), t(debug$cluster[obs,iter]), 
       axes = F,
       xlab = "iterazioni", ylab = "osservazione",
-      col = c("#ffffff", hcl.colors(12, "YlOrRd", rev = FALSE)))
+      col = c("#ffffff", hcl.colors(10, "YlOrRd", rev = FALSE)))
 axis(1, at = seq(1, max(iter), by = 10))
 axis(2, at = seq(1,length(obs), by = 1), labels = obs)
 
@@ -161,9 +161,7 @@ spike_times =  which( apply(t(debug$clus)[-burnin,], 2, function(x) mean(x != 0)
 est_spike = matrix(NA, nrep - max(burnin), length(spike_times) )
 for(i in 1:nrow(est_spike))
 {
-  est_spike[i,] = out_A[i, cluster[i, spike_times ]+1 ]
+  est_spike[i,] = out_A[-burnin,][i, cluster[i, spike_times ]+1 ]
 }
 
-mean(est_spike[-burnin,1])
-mean(est_spike[-burnin,2])
-
+colMeans(est_spike)
