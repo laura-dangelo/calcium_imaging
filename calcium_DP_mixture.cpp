@@ -170,7 +170,7 @@ arma::vec polya_urn(const arma::vec& y, arma::vec cluster, const arma::vec& cc,
 
 // [[Rcpp::export]]
 Rcpp::List calcium_gibbs_debug(int Nrep, arma::vec y,
-                               arma::vec cl, arma::vec cc0 ,
+                               arma::vec cl, arma::vec A_start,
                                double b_start,
                                double gamma_start, double lambda_start,
                                double c0, double varC0,
@@ -211,8 +211,8 @@ Rcpp::List calcium_gibbs_debug(int Nrep, arma::vec y,
   arma::vec AA = arma::zeros(n+1) ;
   
   cluster.col(0) = cl ;
-  out_A(1,0) = 4; out_A(2,0) = 10 ;
-  out_c.col(0) = cc0;
+  out_A.col(0) = A_start; 
+//  out_c.col(0) = cc0;
    
   for(int i = 0; i < Nrep - 1; i++)
   {
@@ -307,7 +307,7 @@ Rcpp::List calcium_gibbs_debug(int Nrep, arma::vec y,
     }
     if(check == 1) { i = i - 20 ; }
 
-    if(i % 100 == 0) { Rcout << "Iteraz. " << i << "\n" ; }
+    if(i % 50 == 0) { Rcout << "Iteraz. " << i << "\n" ; }
   }
   return Rcpp::List::create(Rcpp::Named("calcium") = out_c,
                             Rcpp::Named("A") = out_A,
