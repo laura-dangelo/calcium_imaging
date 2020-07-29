@@ -2,6 +2,7 @@ library(Rcpp)
 library(RcppDist)
 sourceCpp('calcium_DP_mixture.cpp')
 
+
 # data <- read.csv("data.csv", header = FALSE)
 # str(data)
 # head(data)
@@ -59,17 +60,18 @@ debug = calcium_gibbs_debug(Nrep = nrep, y = y,
                             cal = c(0, data$c),
                             cl = clus, A_start = A_start,
                             b_start = 0,
-                    gamma_start = 0.8, lambda_start = 10, 
-                    p_start = 0.997, 
-                    c0 = 0, varC0 = 0.4, tau2 = 0.00001, 
-                    alpha = 1, psi2 = 1, 
-                    hyp_A1 = 1, hyp_A2 = 1, hyp_b1 = 0, hyp_b2 = 1, 
-                    hyp_gamma1 = 1, hyp_gamma2 = 2, hyp_lambda1 = 10, hyp_lambda2 = 1, 
-                    hyp_p1 = 99, hyp_p2 = 1,
-                    eps_gamma = 0.2)
+                            gamma_start = 0.8, lambda_start = 10, 
+                            p_start = 0.999, 
+                            c0 = 0, varC0 = 0.4, tau2 = 0.00001, 
+                            alpha = 1, psi2 = 1, 
+                            hyp_A1 = 1, hyp_A2 = 1, hyp_b1 = 0, hyp_b2 = 1, 
+                            hyp_gamma1 = 1, hyp_gamma2 = 2, hyp_lambda1 = 10, hyp_lambda2 = 1, 
+                            hyp_p1 = 99, hyp_p2 = 1,
+                            eps_gamma = 0.2)
 
 
 str(debug) #1202
+
 
 
 n = length(y)
@@ -87,12 +89,12 @@ plot(1:length(debug$p), debug$p, type = "l")
 lines(1:length(debug$p), cumsum(debug$p)/1:length(debug$p), col =2)
 
 
-plot(data$c, type = "l")
+#plot(data$c, type = "l")
 #lines(debug$calcium[,1], col=5)
-lines(debug$calcium[,1000], col=3)
+#lines(debug$calcium[,100], col=3)
 
 
-burnin = 1:600
+burnin = 1:60
 mean(debug$lambda[-burnin])
 mean(debug$b[-burnin])
 mean(debug$gamma[-burnin])
@@ -103,11 +105,11 @@ lines(0:n, c(0,data$c), col = 2)
 
 
 obs = 1:250
-iter = 1:100
+iter = 1:1000
 image(1:(length(iter)), 1:(length(obs)), t(debug$cluster[obs,iter]), 
       axes = F,
       xlab = "iterazioni", ylab = "osservazione",
-      col = c("#ffffff", hcl.colors(10, "YlOrRd", rev = T)))
+      col = c("#ffffff", hcl.colors(10, "YlOrRd", rev = F)))
 axis(1, at = seq(1, max(iter), by = 10))
 axis(2, at = seq(1,max(obs), by = 1))
 
@@ -115,7 +117,7 @@ obs = 251:500
 image(1:(length(iter)), 1:(length(obs)), t(debug$cluster[obs,iter]), 
       axes = F,
       xlab = "iterazioni", ylab = "osservazione",
-      col = c("#ffffff", hcl.colors(10, "YlOrRd", rev = T)))
+      col = c("#ffffff", hcl.colors(10, "YlOrRd", rev = F)))
 axis(1, at = seq(1, max(iter), by = 10))
 axis(2, at = seq(1,length(obs), by = 1), labels = obs)
 
@@ -147,7 +149,7 @@ which( apply(t(debug$clus)[-burnin,], 2, function(x) mean(x != 0))>0.8)
 hist(apply(debug$clus[,-burnin], 1, function(x) mean(x != 0)), main = "Distr. of spike probabilities")
 
 
-
+burnin = 1:100
 minA = min( which(apply(debug$A[-1,-burnin], 1, function(x) sum(x == 0)) == nrep-(max(burnin))) )
 minA
 debug$A = debug$A[1:(minA +1),]
