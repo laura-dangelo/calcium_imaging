@@ -157,7 +157,7 @@ gibbs_calcium <- function(nrep, y,
     
     back_mean = out_gamma[i] * C0/(C0 + tau2) * (out_c[i+1,2])
     back_var = C0 - out_gamma[i]^2 * C0^2 / (R[1])
-    out_c[i+1, 1] = rnorm(1, back_mean, back_var)
+    out_c[i+1, 1] = rnorm(1, back_mean, back_var) 
     
     
     # sampling di lambda (precision)
