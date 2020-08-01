@@ -8,6 +8,7 @@
 
 using namespace Rcpp;
 
+
 // log-likelihood
 double loglik(const arma::vec& y, const arma::vec& cc, const arma::vec& A, 
               double & b, double & gamma, double & lambda)
@@ -41,7 +42,7 @@ double logpost(const arma::vec& y, const arma::vec& cc, const arma::vec& A,
 
 
 // marginale per Polya Urn
-double logmarginal(double y, double cc, double b, double gamma, 
+double logmarginal(double y, double cc, double & b, double & gamma, 
                 double sigma2, double psi2)
 {
   double out;
@@ -95,6 +96,7 @@ arma::vec polya_urn(const arma::vec& y, arma::vec cluster, const arma::vec& cc,
     {
       arma::vec unique_non0 = arma::unique( non0 ) ; // unique labels of existing clusters
       double max_clus = non0.max() ; // max label of the cluster
+      A(max_clus + 1) = 0 ;
       n_clus = unique_non0.n_elem ; // number of clusters 
       
       if(max_clus > n_clus) // it means that there is a "hole" in the label sequence
@@ -119,37 +121,33 @@ arma::vec polya_urn(const arma::vec& y, arma::vec cluster, const arma::vec& cc,
     double pr_new = log(1-p) + log(alpha) + logmarginal(y(j), cc(j), b, gamma, sigma2 + tau2, psi2) ;
     
     NumericVector prob(n_clus + 2); // cluster assignment probabilities: [ pr(0), pr(cl 1), pr(cl 2), ..., pr(cl K), pr(cl K+1) ]
-    prob[0] = exp(pr0) ;
+    prob[0] = pr0 ;
     
     if(n_clus > 0)
     {
       for(int k = 1; k < n_clus + 1; k++)
       {
         double nj = std::count(non0.begin(), non0.end(), k) ;
-        prob[k] = exp( log(nj) + log(1-p) + R::dnorm(y(j), b + gamma * cc(j) + A(k), std::sqrt(sigma2 + tau2), true) ) ;
+        prob[k] = log(nj) + log(1-p) + R::dnorm(y(j), b + gamma * cc(j) + A(k), std::sqrt(sigma2 + tau2), true) ;
       }
     }
     
-    prob[n_clus + 1] = exp(pr_new) ; 
+    prob[n_clus + 1] = pr_new ; 
     
-    double c_norm ; c_norm = sum( prob ) ;
+    double max_p = max(prob) ;
+    prob = exp( prob ) ;
 
     IntegerVector clusters_id =  seq(0, n_clus + 1);
-    NumericVector pp = prob /c_norm ;
     
-    LogicalVector test(n_clus + 2);
-    for (int l = 0; l < n_clus + 2; l++) { test[l] = NumericVector::is_na(pp[l]); }
-    
-    if( sum(test) > 0 ) 
+    if( exp(max_p) == 0 ) 
     { 
-      pp.fill(0) ;
-      pp[0] = 1 ;
+      prob.fill(0) ;
+      prob[0] = 1 ;
+      if(check == 0) { Rcout << "Probabilità nulle \n" ; }
       check = 1 ;
-      Rcout << "Probabilità nulle \n" ;
-      Rcout << "pp" << pp << "\n" ;
     }
     
-    cluster(j) = Rcpp::sample(clusters_id, 1, false, pp)[0] ;
+    cluster(j) = Rcpp::sample(clusters_id, 1, false, prob)[0] ;
     
     if(cluster(j) == n_clus + 1)
     {
@@ -212,8 +210,6 @@ Rcpp::List calcium_gibbs_debug(int Nrep, arma::vec y,
   out_A.col(0) = A_start; 
   out_c.col(0) = cal;
   
-  int sum_check = 0 ;
-   
   for(int i = 0; i < Nrep -1 ; i++)
   {
     int check = 0 ;
@@ -246,7 +242,7 @@ Rcpp::List calcium_gibbs_debug(int Nrep, arma::vec y,
       out_c(j, i+1) = R::rnorm(back_mean, back_var) ;
     }
 
-    //out_c.col(i+1) = out_c.col(i) ;
+   // out_c.col(i+1) = out_c.col(i) ;
 
     // sampling lambda (precision)
     arma::vec z(n) ; arma::vec sq(n) ; 
@@ -261,7 +257,7 @@ Rcpp::List calcium_gibbs_debug(int Nrep, arma::vec y,
     
     // sampling b
     out_b(i+1) = R::rnorm((n * mean(z) + hyp_b2 * hyp_b1) / (n + hyp_b2), std::sqrt(1/ ((n + hyp_b2) * out_lambda(i+1))) ) ;
-    
+    if( !out_b.is_finite() ) { check = 1 ; }
     //out_lambda(i+1) = out_lambda(i) ;
     //out_b(i+1) = out_b(i) ;
     
@@ -288,7 +284,7 @@ Rcpp::List calcium_gibbs_debug(int Nrep, arma::vec y,
                                   out_p(i),
                                   sigma2, tau2,
                                   alpha, psi2, check) ; 
-    //cluster.col(i+1) = cluster.col(i) ;
+//    cluster.col(i+1) = cluster.col(i) ;
      
     // sampling of parameters A1,...,Ak
     arma::vec line(n); line = cluster.col(i+1) ;
@@ -318,12 +314,9 @@ Rcpp::List calcium_gibbs_debug(int Nrep, arma::vec y,
     out_p(i+1) = out_p(i) ;
     
     //// END Gibbs sampler ////
-    sum_check = sum_check + check ;
-    if(check == 1) { Rcout << "No iter " << i << "\n" ;
+    if(check == 1) { Rcout << "Stop at iter. " << i << "\n" ;
                     i = Nrep - 2 ; }
-//    if(sum_check > 5) { Rcout << "Interrompi" << i << "\n" ;
-//                        i = Nrep - 2 ; }
-    if(i % 10 == 0) { Rcout << "Iteraz. " << i << "\n" ; }
+    if(i % 100 == 0) { Rcout << "Iteraz. " << i << "\n" ; }
   }
   return Rcpp::List::create(Rcpp::Named("calcium") = out_c,
                             Rcpp::Named("A") = out_A,

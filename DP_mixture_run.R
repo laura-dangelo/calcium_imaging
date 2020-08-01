@@ -1,7 +1,7 @@
 library(Rcpp)
 library(RcppDist)
+# install.packages("RcppProgress")
 sourceCpp('calcium_DP_mixture.cpp')
-
 
 # data <- read.csv("data.csv", header = FALSE)
 # str(data)
@@ -36,9 +36,9 @@ sim_data <- function(n, lambda, time_spike, b, gamma, prob, par)
   return(list("y" = b + c + rnorm(n, 0, 1/sqrt(lambda)), "c" = c, "s" = s, "A" = A, "k" = k))
 }
 
-data <- sim_data(n = 500, lambda = 10, time_spike = c(50,52, 140, 180, 250, 350, 420, 421, 460),
+data <- sim_data(n = 1000, lambda = 10, time_spike = c(50,52, 140, 180, 250, 350, 420, 421, 460, 660, 850, 852),
                  gamma = 0.8, b = 0,
-                 prob = c(0.4, 0.6), par = c(4, 10))
+                 prob = c(0.23, 0.44, 0.66), par = c(4, 10, 6))
 # data <- sim_data(n = 200, lambda = 10, time_spike = c(15,50,52,66,82,130,168),
 #                  gamma = 0.3, b = 0,
 #                  prob = c(0.4, 0.6), par = c(4, 10))
@@ -51,9 +51,10 @@ data$k
 # cll = rep(0, length(y))
 # cll[pr] = 1
 
-A_start = rep(0,500)
+A_start = rep(0,length(y))
 A_start[2] = 4
 A_start[3] = 10
+A_start[4] = 6
 
 nrep = 1000
 debug = calcium_gibbs_debug(Nrep = nrep, y = y, 
@@ -62,7 +63,7 @@ debug = calcium_gibbs_debug(Nrep = nrep, y = y,
                             b_start = 0,
                             gamma_start = 0.8, lambda_start = 10, 
                             p_start = 0.999, 
-                            c0 = 0, varC0 = 0.4, tau2 = 0.00001, 
+                            c0 = 0, varC0 = 0.4, tau2 = 0.01, 
                             alpha = 1, psi2 = 1, 
                             hyp_A1 = 1, hyp_A2 = 1, hyp_b1 = 0, hyp_b2 = 1, 
                             hyp_gamma1 = 1, hyp_gamma2 = 2, hyp_lambda1 = 10, hyp_lambda2 = 1, 
@@ -89,21 +90,6 @@ plot(1:length(debug$p), debug$p, type = "l")
 lines(1:length(debug$p), cumsum(debug$p)/1:length(debug$p), col =2)
 
 
-#plot(data$c, type = "l")
-#lines(debug$calcium[,1], col=5)
-#lines(debug$calcium[,100], col=3)
-
-
-burnin = 1:60
-mean(debug$lambda[-burnin])
-mean(debug$b[-burnin])
-mean(debug$gamma[-burnin])
-
-plot(0:n, rowMeans(debug$calcium[,-burnin]), type = "l")
-lines(0:n, c(0,data$c), col = 2)
-
-
-
 obs = 1:250
 iter = 1:1000
 image(1:(length(iter)), 1:(length(obs)), t(debug$cluster[obs,iter]), 
@@ -121,8 +107,37 @@ image(1:(length(iter)), 1:(length(obs)), t(debug$cluster[obs,iter]),
 axis(1, at = seq(1, max(iter), by = 10))
 axis(2, at = seq(1,length(obs), by = 1), labels = obs)
 
+obs = 500:750
+image(1:(length(iter)), 1:(length(obs)), t(debug$cluster[obs,iter]), 
+      axes = F,
+      xlab = "iterazioni", ylab = "osservazione",
+      col = c("#ffffff", hcl.colors(10, "YlOrRd", rev = F)))
+axis(1, at = seq(1, max(iter), by = 10))
+axis(2, at = seq(1,length(obs), by = 1), labels = obs)
+
+obs = 751:1000
+image(1:(length(iter)), 1:(length(obs)), t(debug$cluster[obs,iter]), 
+      axes = F,
+      xlab = "iterazioni", ylab = "osservazione",
+      col = c("#ffffff", hcl.colors(10, "YlOrRd", rev = F)))
+axis(1, at = seq(1, max(iter), by = 10))
+axis(2, at = seq(1,length(obs), by = 1), labels = obs)
+
+
 
 burnin = 1:600
+which(debug$b < -20)
+burnin = c(1:600, 628, 629, 630)
+
+mean(debug$lambda[-burnin])
+mean(debug$b[-burnin])
+mean(debug$gamma[-burnin])
+
+plot(0:n, c(0,data$c), type = "l")
+lines(0:n, rowMeans(debug$calcium[,-burnin]), col = "turquoise")
+
+
+
 plot(1:n, y, type = "l")
 AA = matrix(0,nrep,n)
 for(i in 1:nrep)
@@ -149,7 +164,7 @@ which( apply(t(debug$clus)[-burnin,], 2, function(x) mean(x != 0))>0.8)
 hist(apply(debug$clus[,-burnin], 1, function(x) mean(x != 0)), main = "Distr. of spike probabilities")
 
 
-burnin = 1:100
+burnin = 1:600
 minA = min( which(apply(debug$A[-1,-burnin], 1, function(x) sum(x == 0)) == nrep-(max(burnin))) )
 minA
 debug$A = debug$A[1:(minA +1),]
