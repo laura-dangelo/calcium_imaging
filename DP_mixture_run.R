@@ -36,9 +36,9 @@ sim_data <- function(n, lambda, time_spike, b, gamma, prob, par)
   return(list("y" = b + c + rnorm(n, 0, 1/sqrt(lambda)), "c" = c, "s" = s, "A" = A, "k" = k))
 }
 
-data <- sim_data(n = 1000, lambda = 10, time_spike = c(50,52, 140, 180, 250, 350, 420, 421, 460, 660, 850, 852),
+data <- sim_data(n = 500, lambda = 10, time_spike = c(50,52, 140, 180, 250, 350, 420, 421, 460),
                  gamma = 0.8, b = 0,
-                 prob = c(0.23, 0.44, 0.66), par = c(4, 10, 6))
+                 prob = c(0.23, 0.44), par = c(4, 10))
 # data <- sim_data(n = 200, lambda = 10, time_spike = c(15,50,52,66,82,130,168),
 #                  gamma = 0.3, b = 0,
 #                  prob = c(0.4, 0.6), par = c(4, 10))
@@ -48,24 +48,25 @@ clus = data$s
 clus[clus>0] = data$k
 data$k
 
-# cll = rep(0, length(y))
-# cll[pr] = 1
+1-length(data$k)/length(data$y)
 
-A_start = rep(0,length(y))
+
+A_start = rep(0,50)
 A_start[2] = 4
 A_start[3] = 10
-A_start[4] = 6
 
+
+n = length(y)
 nrep = 1000
 debug = calcium_gibbs_debug(Nrep = nrep, y = y, 
-                            cal = c(0, data$c),
+                            cal = c(0,data$c),
                             cl = clus, A_start = A_start,
                             b_start = 0,
                             gamma_start = 0.8, lambda_start = 10, 
-                            p_start = 0.999, 
-                            c0 = 0, varC0 = 0.4, tau2 = 0.01, 
+                            p_start = 1-length(data$k)/length(data$y), 
+                            c0 = 0, varC0 = 0.4, tau2 = 0.001, 
                             alpha = 1, psi2 = 1, 
-                            hyp_A1 = 1, hyp_A2 = 1, hyp_b1 = 0, hyp_b2 = 1, 
+                            hyp_A1 = 3, hyp_A2 = 3, hyp_b1 = 0, hyp_b2 = 1, 
                             hyp_gamma1 = 1, hyp_gamma2 = 2, hyp_lambda1 = 10, hyp_lambda2 = 1, 
                             hyp_p1 = 99, hyp_p2 = 1,
                             eps_gamma = 0.2)
@@ -75,7 +76,7 @@ str(debug) #1202
 
 
 
-n = length(y)
+
 
 plot(1:length(debug$lambda), debug$lambda, type = "l", xlab = "iterazioni", ylab = "lambda")
 lines(1:length(debug$lambda), cumsum(debug$lambda)/1:length(debug$lambda), col =2)
@@ -107,27 +108,10 @@ image(1:(length(iter)), 1:(length(obs)), t(debug$cluster[obs,iter]),
 axis(1, at = seq(1, max(iter), by = 10))
 axis(2, at = seq(1,length(obs), by = 1), labels = obs)
 
-obs = 500:750
-image(1:(length(iter)), 1:(length(obs)), t(debug$cluster[obs,iter]), 
-      axes = F,
-      xlab = "iterazioni", ylab = "osservazione",
-      col = c("#ffffff", hcl.colors(10, "YlOrRd", rev = F)))
-axis(1, at = seq(1, max(iter), by = 10))
-axis(2, at = seq(1,length(obs), by = 1), labels = obs)
-
-obs = 751:1000
-image(1:(length(iter)), 1:(length(obs)), t(debug$cluster[obs,iter]), 
-      axes = F,
-      xlab = "iterazioni", ylab = "osservazione",
-      col = c("#ffffff", hcl.colors(10, "YlOrRd", rev = F)))
-axis(1, at = seq(1, max(iter), by = 10))
-axis(2, at = seq(1,length(obs), by = 1), labels = obs)
 
 
 
 burnin = 1:600
-which(debug$b < -20)
-burnin = c(1:600, 628, 629, 630)
 
 mean(debug$lambda[-burnin])
 mean(debug$b[-burnin])
