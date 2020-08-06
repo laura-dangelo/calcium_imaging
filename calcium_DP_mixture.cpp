@@ -19,7 +19,7 @@ double loglik(const arma::vec& y, const arma::vec& cc, const arma::vec& A,
   arma::vec llik(n);
   
   for(int k = 0; k < n; k++) { 
-    llik(k) = R::dnorm(y(k), b + gamma * cc(k) + A(k+1), std::sqrt(tau2) + 1/std::sqrt(lambda), true) ;
+    llik(k) = R::dnorm(y(k), b + gamma * cc(k) + A(k+1), std::sqrt(tau2 + 1/lambda), true) ;
   }
   return arma::accu(llik);
 }
