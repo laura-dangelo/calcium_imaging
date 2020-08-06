@@ -13,13 +13,13 @@ using namespace Rcpp;
 
 // log-likelihood
 double loglik(const arma::vec& y, const arma::vec& cc, const arma::vec& A, 
-              double & b, double & gamma, double & lambda)
+              double & b, double & gamma, double & lambda, double & tau2)
 {
   int n = y.n_elem;
   arma::vec llik(n);
   
   for(int k = 0; k < n; k++) { 
-    llik(k) = R::dnorm(y(k), b + gamma * cc(k) + A(k+1), std::sqrt(lambda), true) ;
+    llik(k) = R::dnorm(y(k), b + gamma * cc(k) + A(k+1), std::sqrt(tau2) + 1/std::sqrt(lambda), true) ;
   }
   return arma::accu(llik);
 }
@@ -34,11 +34,11 @@ double logprior_gamma(double & gamma, double & hyp_gamma1, double & hyp_gamma2)
 
 // log-posterior
 double logpost(const arma::vec& y, const arma::vec& cc, const arma::vec& A, 
-               double & b, double & gamma, double & lambda,
+               double & b, double & gamma, double & lambda, double & tau2, 
                double & hyp_gamma1, double & hyp_gamma2)
 {
   double out;
-  out = loglik(y, cc, A, b, gamma, lambda) + logprior_gamma(gamma, hyp_gamma1, hyp_gamma2);
+  out = loglik(y, cc, A, b, gamma, lambda, tau2) + logprior_gamma(gamma, hyp_gamma1, hyp_gamma2);
   return(out);
 }
 
@@ -284,11 +284,11 @@ Rcpp::List calcium_gibbs_debug(int Nrep, arma::vec y,
     newgamma = oldgamma + R::runif(-eps_gamma, eps_gamma) ;
     ratio = exp( logpost(y, out_c.col(i+1), 
                          AA, out_b(i+1), 
-                         newgamma, out_lambda(i+1),
+                         newgamma, out_lambda(i+1), tau2,
                          hyp_gamma1, hyp_gamma2) -
                   logpost(y, out_c.col(i+1), 
                           AA, out_b(i+1), 
-                          oldgamma, out_lambda(i+1),
+                          oldgamma, out_lambda(i+1), tau2,
                           hyp_gamma1, hyp_gamma2) ) ;
     
     if(R::runif(0, 1) < ratio) oldgamma = newgamma ;
