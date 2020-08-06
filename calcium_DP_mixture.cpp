@@ -202,14 +202,11 @@ Rcpp::List calcium_gibbs_debug(int Nrep, arma::vec y,
   arma::vec filter_var(n+1) ; // 0 1 ... n
   arma::vec R(n+1) ; arma::vec a(n+1) ; // 0 1 ... n
   double back_mean; double back_var ;
-  double sigma2 ;
+  double sigma2 = 1/lambda_start ;
   
   double oldgamma ; double newgamma ;
   double ratio ;
-  
-  double newp ; double oldp ;
-  double ratio2 ;
-  
+
   double n_clus ;
   arma::vec AA = arma::zeros(n+1) ;
   
@@ -302,7 +299,8 @@ Rcpp::List calcium_gibbs_debug(int Nrep, arma::vec y,
                 out_p(i),
                 sigma2, tau2,
                 alpha, psi2, check) ; 
-    // cluster.col(i+1) = cluster.col(i) ;
+ 
+    //cluster.col(i+1) = cluster.col(i) ;
     
     // sampling of parameters A1,...,Ak
     arma::vec line(n); line = cluster.col(i+1) ;
