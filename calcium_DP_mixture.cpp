@@ -246,35 +246,34 @@ Rcpp::List calcium_gibbs_debug(int Nrep, arma::vec y,
       
       out_c(j, i+1) = R::rnorm(back_mean, back_var) ;
     }
-    out_c.col(i+1) = out_c.col(i) ;
+    //out_c.col(i+1) = out_c.col(i) ;
 
 
 
     // sampling b
-/*    arma::vec z(n) ; 
+    arma::vec z(n) ; 
     for(int j = 0; j < n; j++) { z(j) = y(j) - out_c(j+1, i+1) ; } 
     
     out_b(i+1) = R::rnorm( (hyp_b2 * hyp_b1 + out_lambda(i) * arma::accu(z)) / (hyp_b2 + n * out_lambda(i)) , 
                     std::sqrt( 1/ (hyp_b2 + n * out_lambda(i)) ) ) ;
-*/
-    out_b(i+1) = out_b(i) ;
+
+    //out_b(i+1) = out_b(i) ;
     
     // sampling lambda (precision)
-/*    arma::vec sq(n) ; 
+    arma::vec sq(n) ; 
     for(int j = 0; j < n; j++) { sq(j) = pow(z(j) - out_b(i+1), 2) ; }
     
     out_lambda(i+1) = R::rgamma(hyp_lambda1 + n/2, 1/(hyp_lambda2 + 0.5 * arma::accu(sq)) ) ;
 
     if( !out_b.is_finite() ) { check = 1 ; }
     if( !out_lambda.is_finite() ) { check = 1 ; }
-
-*/    
-    out_lambda(i+1) = out_lambda(i) ;
+    
+    //out_lambda(i+1) = out_lambda(i) ;
 
     
     //MH per gamma: random walk
     oldgamma = out_gamma(i) ;
-/*    newgamma = oldgamma + R::runif(-eps_gamma, eps_gamma) ;
+    newgamma = oldgamma + R::runif(-eps_gamma, eps_gamma) ;
     ratio = exp( logpost(y, out_c.col(i+1), 
                          AA, out_b(i+1), 
                          newgamma, out_lambda(i+1),
@@ -284,7 +283,7 @@ Rcpp::List calcium_gibbs_debug(int Nrep, arma::vec y,
                           oldgamma, out_lambda(i+1),
                           hyp_gamma1, hyp_gamma2) ) ;
     
-    if(R::runif(0, 1) < ratio) oldgamma = newgamma ;*/
+    if(R::runif(0, 1) < ratio) oldgamma = newgamma ;
     out_gamma(i+1) = oldgamma ;
     
     
