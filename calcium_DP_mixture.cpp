@@ -4,7 +4,9 @@
 #include <mvnorm.h>
 #include <RcppArmadilloExtensions/sample.h>
 // [[Rcpp::depends(RcppArmadillo, RcppDist)]]
-
+// [[Rcpp::depends(RcppProgress)]]
+#include <progress.hpp>
+#include <progress_bar.hpp>
 
 using namespace Rcpp;
 
@@ -215,8 +217,13 @@ Rcpp::List calcium_gibbs_debug(int Nrep, arma::vec y,
   out_A.col(0) = A_start; 
   out_c.col(0) = cal;
   
+  bool display_progress = true ;
+  Progress p(Nrep, display_progress) ;
+  
   for(int i = 0; i < Nrep -1 ; i++)
   {
+    if( Progress::check_abort() ) { return -1.0 ; }
+    p.increment();
     int check = 0 ;
 
     sigma2 = 1/out_lambda(i) ;
@@ -246,6 +253,7 @@ Rcpp::List calcium_gibbs_debug(int Nrep, arma::vec y,
       
       out_c(j, i+1) = R::rnorm(back_mean, back_var) ;
     }
+ 
     //out_c.col(i+1) = out_c.col(i) ;
 
 
@@ -326,7 +334,7 @@ Rcpp::List calcium_gibbs_debug(int Nrep, arma::vec y,
     //// END Gibbs sampler ////
     if(check == 1) { Rcout << "Stop at iter. " << i << "\n" ;
                     i = Nrep - 2 ; }
-    if(i % 50 == 0) { Rcout << "Iteraz. " << i << "\n" ; }
+   // if(i % 50 == 0) { Rcout << "Iteraz. " << i << "\n" ; }
   }
   return Rcpp::List::create(Rcpp::Named("calcium") = out_c,
                             Rcpp::Named("A") = out_A,
