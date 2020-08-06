@@ -42,7 +42,7 @@ double logpost(const arma::vec& y, const arma::vec& cc, const arma::vec& A,
 
 
 // marginale per Polya Urn
-double logmarginal(double y, double cc, double & b, double & gamma, 
+/*double logmarginal(double y, double cc, double & b, double & gamma, 
                 double sigma2, double psi2)
 {
   double out;
@@ -54,7 +54,7 @@ double logmarginal(double y, double cc, double & b, double & gamma,
   out = log(2) + R::dnorm(y, mean1, sd1, true) + log( R::pnorm(0, mean2, sd2, false, false) ) ;
   return(out);
 }
-
+*/
 
 // generazione da normale troncata tra 0 e Inf
 double gen_truncnorm(double mean, double sd)
@@ -118,7 +118,8 @@ arma::vec polya_urn(const arma::vec& y, arma::vec cluster, const arma::vec& cc,
     }
     
     double pr0 = log(p) + R::dnorm(y(j), b + gamma * cc(j), std::sqrt(sigma2 + tau2), true) ;
-    double pr_new = log(1-p) + log(alpha) + logmarginal(y(j), cc(j), b, gamma, sigma2 + tau2, psi2) ;
+    double pr_new = log(1-p) + log(alpha) + R::dnorm( y(j), b + gamma * cc(j), std::sqrt(sigma2 + tau2 + psi2), true ) ;
+    //logmarginal(y(j), cc(j), b, gamma, sigma2 + tau2, psi2) ;
     
     NumericVector prob(n_clus + 2); // cluster assignment probabilities: [ pr(0), pr(cl 1), pr(cl 2), ..., pr(cl K), pr(cl K+1) ]
     prob[0] = pr0 ;
@@ -135,7 +136,7 @@ arma::vec polya_urn(const arma::vec& y, arma::vec cluster, const arma::vec& cc,
     prob[n_clus + 1] = pr_new ; 
     
     double max_p = max(prob) ;
-    prob = exp( prob ) ;
+    prob = exp( prob - max_p ) ;
 
     IntegerVector clusters_id =  seq(0, n_clus + 1);
     
@@ -201,9 +202,13 @@ Rcpp::List calcium_gibbs_debug(int Nrep, arma::vec y,
   double back_mean; double back_var ;
   double sigma2 ;
   
-  double oldgamma; double newgamma ;
+  double oldgamma ; double newgamma ;
   double ratio ;
   
+  double newp ; double oldp ;
+  double ratio2 ;
+  
+  double n_clus ;
   arma::vec AA = arma::zeros(n+1) ;
   
   cluster.col(0) = cl ;
@@ -218,7 +223,7 @@ Rcpp::List calcium_gibbs_debug(int Nrep, arma::vec y,
     AA(0) = 0 ;
     for(int j = 1; j < n+1; j++) { AA(j) =  out_A(cluster(j-1,i), i) ; }
     
-    // sampling c
+    // sampling calcium: kalman filter
     a(0) = 0 ; // a0
     R(0) = varC0 ; // R0
     filter_mean(0) = 0 ;
@@ -242,24 +247,27 @@ Rcpp::List calcium_gibbs_debug(int Nrep, arma::vec y,
       out_c(j, i+1) = R::rnorm(back_mean, back_var) ;
     }
 
-   // out_c.col(i+1) = out_c.col(i) ;
 
-    // sampling lambda (precision)
-    arma::vec z(n) ; arma::vec sq(n) ; 
-    for(int j = 0; j < n; j++) { 
-      z(j) = y(j) - out_gamma(i) * out_c(j, i+1) - AA(j+1) ; 
-      sq(j) = pow(z(j) - arma::mean(z), 2) ; 
-    } 
-    out_lambda(i+1) = R::rgamma(hyp_lambda1 + n/2, 
-               1/(hyp_lambda2 + 0.5 * arma::accu(sq) + 0.5 * n * hyp_b2 / (n + hyp_b2) * pow(arma::mean(z) - hyp_b1, 2)) ) ;
 
-    if( !out_lambda.is_finite() ) { check = 1 ; }
-    
     // sampling b
-    out_b(i+1) = R::rnorm((n * mean(z) + hyp_b2 * hyp_b1) / (n + hyp_b2), std::sqrt(1/ ((n + hyp_b2) * out_lambda(i+1))) ) ;
+    arma::vec z(n) ; 
+    for(int j = 0; j < n; j++) { z(j) = y(j) - out_c(j+1, i+1) ; } 
+    
+    out_b(i+1) = R::rnorm( (hyp_b2 * hyp_b1 + out_lambda(i) * arma::accu(z)) / (hyp_b2 + n * out_lambda(i)) , 
+                    std::sqrt( 1/ (hyp_b2 + n * out_lambda(i)) ) ) ;
+
+
+    
+    // sampling lambda (precision)
+    arma::vec sq(n) ; 
+    for(int j = 0; j < n; j++) { sq(j) = pow(z(j) - out_b(i+1), 2) ; }
+    
+    out_lambda(i+1) = R::rgamma(hyp_lambda1 + n/2, 1/(hyp_lambda2 + 0.5 * arma::accu(sq)) ) ;
+
     if( !out_b.is_finite() ) { check = 1 ; }
-    //out_lambda(i+1) = out_lambda(i) ;
-    //out_b(i+1) = out_b(i) ;
+    if( !out_lambda.is_finite() ) { check = 1 ; }
+
+
     
     //MH per gamma: random walk
     oldgamma = out_gamma(i) ;
@@ -279,19 +287,19 @@ Rcpp::List calcium_gibbs_debug(int Nrep, arma::vec y,
     
     // Sampling of clusters and cluster parameters
     // Polya-Urn
-    cluster.col(i+1) = polya_urn(y, cluster.col(i), out_c.col(i+1),
+ /*   cluster.col(i+1) = polya_urn(y, cluster.col(i), out_c.col(i+1),
                                   out_A.col(i), out_b(i+1), out_gamma(i+1), 
                                   out_p(i),
                                   sigma2, tau2,
-                                  alpha, psi2, check) ; 
-//    cluster.col(i+1) = cluster.col(i) ;
+                                  alpha, psi2, check) ; */
+    cluster.col(i+1) = cluster.col(i) ;
      
     // sampling of parameters A1,...,Ak
     arma::vec line(n); line = cluster.col(i+1) ;
     arma::vec non0 = line.elem( find( line > 0 ) );
     arma::vec tmp2 = arma::unique( non0 ) ; // unique labels 
     
-    double n_clus = tmp2.n_elem ; // number of clusters (n.unique \{0}) ...
+    n_clus = tmp2.n_elem ; // number of clusters (n.unique \{0}) ...
     arma::vec nj(n_clus) ;
     arma::vec ssum(n_clus) ;
     
@@ -310,13 +318,15 @@ Rcpp::List calcium_gibbs_debug(int Nrep, arma::vec y,
     
     // Update p
     double n0 = std::count(line.begin(), line.end(), 0) ;
-    //out_p(i+1) = R::rbeta(hyp_p1 + n0, hyp_p2 + n - n0) ;
-    out_p(i+1) = out_p(i) ;
+    out_p(i+1) = R::rbeta(hyp_p1 + n0, hyp_p2 + n - n0) ;
+    //out_p(i+1) = out_p(i) ;
+
+     if(R::runif(0, 1) < ratio) oldgamma = newgamma ;
     
     //// END Gibbs sampler ////
     if(check == 1) { Rcout << "Stop at iter. " << i << "\n" ;
                     i = Nrep - 2 ; }
-    if(i % 100 == 0) { Rcout << "Iteraz. " << i << "\n" ; }
+    if(i % 50 == 0) { Rcout << "Iteraz. " << i << "\n" ; }
   }
   return Rcpp::List::create(Rcpp::Named("calcium") = out_c,
                             Rcpp::Named("A") = out_A,
