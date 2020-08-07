@@ -27,7 +27,7 @@ sim_data <- function(n, lambda, time_spike, b, gamma, prob, par)
   s[time_spike] = 1
 
   k <- sample(1:length(prob), sum(s), prob, replace = TRUE)
-  A[time_spike] <- rnorm(sum(s), par[k], 0.2)
+  A[time_spike] <- rnorm(sum(s), par[k], 0.02)
 
   for(i in 2:n)
   {
@@ -39,9 +39,9 @@ sim_data <- function(n, lambda, time_spike, b, gamma, prob, par)
 data <- sim_data(n = 500, lambda = 10, time_spike = c(50,52, 140, 180, 250, 350, 420, 421, 460),
                  gamma = 0.8, b = 0,
                  prob = c(0.23, 0.44), par = c(4, 10))
-# data <- sim_data(n = 200, lambda = 10, time_spike = c(15,50,52,66,82,130,168),
-#                  gamma = 0.3, b = 0,
-#                  prob = c(0.4, 0.6), par = c(4, 10))
+data <- sim_data(n = 1000, lambda = 10, time_spike = c(50,52, 180, 250, 350, 420, 421, 460,600, 662, 802,803,904),
+                 gamma = 0.8, b = 0,
+                 prob = c(0.23, 0.44, 0.33), par = c(4, 10, 6))
 y = data$y
 plot(y, type = "l")
 clus = data$s
@@ -61,7 +61,7 @@ nrep = 1000
 debug = calcium_gibbs_debug(Nrep = nrep, y = y, 
                             cal = rep(0,n+1),
                             cl = rep(0,n), A_start = A_start,
-                            b_start = -1,
+                            b_start = 0,
                             gamma_start = 0.5, lambda_start = 5, 
                             p_start = 0.999, #1-length(data$k)/length(data$y), 
                             c0 = 0, varC0 = 0.4, tau2 = 0.01, 
