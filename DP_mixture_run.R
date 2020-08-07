@@ -27,11 +27,11 @@ sim_data <- function(n, lambda, time_spike, b, gamma, prob, par)
   s[time_spike] = 1
 
   k <- sample(1:length(prob), sum(s), prob, replace = TRUE)
-  A[time_spike] <- rnorm(sum(s), par[k], 0.5)
+  A[time_spike] <- rnorm(sum(s), par[k], 0.2)
 
   for(i in 2:n)
   {
-    c[i] = gamma * c[i-1] + A[i] * s[i]
+    c[i] = gamma * c[i-1] + A[i] * s[i] + rnorm(1,0,0.01)
   }
   return(list("y" = b + c + rnorm(n, 0, 1/sqrt(lambda)), "c" = c, "s" = s, "A" = A, "k" = k))
 }
@@ -52,24 +52,24 @@ data$k
 
 
 A_start = rep(0,50)
-A_start[2] = 4
-A_start[3] = 10
+# A_start[2] = 4
+# A_start[3] = 10
 
 
 n = length(y)
 nrep = 1000
 debug = calcium_gibbs_debug(Nrep = nrep, y = y, 
-                            cal = c(0,data$c),
-                            cl = clus, A_start = A_start,
-                            b_start = 0,
-                            gamma_start = 0.8, lambda_start = 10, 
-                            p_start = 1-length(data$k)/length(data$y), 
-                            c0 = 0, varC0 = 0.4, tau2 = 0.001, 
+                            cal = rep(0,n+1),
+                            cl = rep(0,n), A_start = A_start,
+                            b_start = -1,
+                            gamma_start = 0.5, lambda_start = 5, 
+                            p_start = 0.999, #1-length(data$k)/length(data$y), 
+                            c0 = 0, varC0 = 0.4, tau2 = 0.01, 
                             alpha = 1, psi2 = 1, 
-                            hyp_A1 = 3, hyp_A2 = 3, hyp_b1 = 0, hyp_b2 = 1, 
-                            hyp_gamma1 = 1, hyp_gamma2 = 2, hyp_lambda1 = 10, hyp_lambda2 = 1, 
+                            hyp_A1 = 1, hyp_A2 = 3, hyp_b1 = 0, hyp_b2 = 1, 
+                            hyp_gamma1 = 1, hyp_gamma2 = 2, hyp_lambda1 = 1, hyp_lambda2 = 1, 
                             hyp_p1 = 99, hyp_p2 = 1,
-                            eps_gamma = 0.2)
+                            eps_gamma = 0.012)
 
 
 str(debug) #1202
@@ -92,7 +92,7 @@ lines(1:length(debug$p), cumsum(debug$p)/1:length(debug$p), col =2)
 
 
 obs = 1:250
-iter = 1:1000
+iter = 1:length(debug$gamma)
 image(1:(length(iter)), 1:(length(obs)), t(debug$cluster[obs,iter]), 
       axes = F,
       xlab = "iterazioni", ylab = "osservazione",
@@ -158,21 +158,5 @@ out_A = t(debug$A)
 str(out_A)
 
 sortA = t(apply(out_A, 1, sort, decreasing = TRUE))
-str(sortA)
-sortA[1:20,1:minA]
+apply(sortA, 2, function(x) mean(x==0))
 round(colMeans(sortA),2)
-
-
-cluster = t(debug$cluster[,-burnin])
-str(cluster)
-cluster[, which( apply(t(debug$clus)[-burnin,], 2, function(x) mean(x != 0))<0.8)] = 0
-table(apply(cluster,1, function(x) length(unique(x))))
-
-spike_times =  which( apply(t(debug$clus)[-burnin,], 2, function(x) mean(x != 0))>0.8)
-est_spike = matrix(NA, nrep - max(burnin), length(spike_times) )
-for(i in 1:nrow(est_spike))
-{
-  est_spike[i,] = out_A[-burnin,][i, cluster[i, spike_times ]+1 ]
-}
-
-colMeans(est_spike)

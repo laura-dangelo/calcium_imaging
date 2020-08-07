@@ -14,7 +14,8 @@ rm(list = ("data"))
 plot(1:length(y), y, type = "l")
 y = y[4000:10000]
 plot(1:length(y), y, type = "l")
-#abline(v = which(y >0.5), col = 2)
+
+
 plot(diff(y,1), type = "l")
 
 pr = which(diff(y,1)>0.22) + 1
@@ -35,16 +36,16 @@ out$AA = matrix(NA, length(y), 1)
 out$b = 0
 out$gamma = 0.4
 out$lambda = 40
-out$p = 0.997
+out$p = 0.998
 
-nrep = 20
+nrep = 500
 debug = calcium_gibbs_debug(Nrep = nrep, y = y, 
                             cal = out$calcium[,ncol(out$cluster)],
                             cl = out$cluster[,ncol(out$cluster)], A_start = out$A[,ncol(out$cluster)],
                             b_start = out$b[length(out$b)],
                             gamma_start = out$gamma[length(out$b)], lambda_start = out$lambda[length(out$b)], 
-                            p_start = out$p[length(out$b)],
-                            c0 = 0, varC0 = 0.4, tau2 = 0.00001, 
+                            p_start = out$p,
+                            c0 = 0, varC0 = 0.4, tau2 = 0.01, 
                             alpha = 1, psi2 = 1, 
                             hyp_A1 = 1, hyp_A2 = 1, 
                             hyp_b1 = 0, hyp_b2 = 1, 
@@ -70,18 +71,19 @@ lines(1:length(out$lambda), cumsum(out$lambda)/1:length(out$lambda), col =2)
 
 plot(1:length(out$b), out$b, type = "l", xlab = "iterazioni", ylab = "b")
 lines(1:length(out$b), cumsum(out$b)/1:length(out$b), col =2)
+plot(1:length(out$b), out$b, type = "l", xlab = "iterazioni", ylab = "b", ylim =c(-.1,.02))
 
 plot(1:length(out$gamma), out$gamma, type = "l", xlab = "iterazioni", ylab = "gamma")
 lines(1:length(out$gamma), cumsum(out$gamma)/1:length(out$gamma), col =2)
 
 
-burnin = 1:800
+burnin = 1:1200
 mean(out$lambda[-burnin])
 mean(out$b[-burnin])
 mean(out$gamma[-burnin])
 
 plot(0:n, rowMeans(out$calcium[,-burnin]), type = "l")
-
+lines(1:n, y, col="turquoise", lty = 2)
 
 obs = 1:500
 iter = 800:1800
@@ -119,7 +121,7 @@ axis(2, at = seq(1,length(obs), by = 1), labels = obs)
 
 
 
-burnin = 1:600
+
 plot(1:n, y, type = "l")
 AA = matrix(0,(length(out$b)-max(burnin)),n)
 for(i in 1:(length(out$b)-max(burnin)))
@@ -140,8 +142,8 @@ for(i in 1:nrow(AA))
 plot(1:n, y, type = "l")
 lines(1:n, mean(out$b[-burnin]) + colMeans(calcium)[2:(n+1)], col = "turquoise3", lwd = 1.5)
 
-abline(v = which( apply(t(out$clus)[-burnin,], 2, function(x) mean(x != 0))>0.5), lty = 3, col = "salmon")
-which( apply(t(out$clus)[-burnin,], 2, function(x) mean(x != 0))>0.8)
+abline(v = which( apply(t(out$clus)[-burnin,], 2, function(x) mean(x != 0))>0.95), lty = 3, col = "salmon")
+which( apply(t(out$clus)[-burnin,], 2, function(x) mean(x != 0))>0.95)
 
 
 hist(apply(out$clus[,-burnin], 1, function(x) mean(x != 0)), main = "Distr. of spike probabilities")
