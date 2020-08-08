@@ -312,13 +312,13 @@ Rcpp::List calcium_gibbs_debug(int Nrep, arma::vec y,
       arma::uvec idk = find( line == k ) ;
       ssum(k-1) = arma::accu( lincomb(idk) ) ;
       
-      out_A(k, i+1) = gen_truncnorm( hyp_A2 * ssum(k-1) / (nj(k-1) * hyp_A2 + sigma2 + tau2), 
+      out_A(k, i+1) = gen_truncnorm( (hyp_A2 * ssum(k-1) + (sigma2 + tau2) * hyp_A1) / (nj(k-1) * hyp_A2 + sigma2 + tau2), 
             std::sqrt((sigma2 + tau2) * hyp_A2 / (nj(k-1) * hyp_A2 + sigma2 + tau2) )) ;
     }
     
     // Update p
     double n0 = std::count(line.begin(), line.end(), 0) ;
-    out_p(i+1) = out_p(i) ;
+    out_p(i+1) = R::rbeta(hyp_p1 + n0, hyp_p2 + n - n0) ;
     
     //// END Gibbs sampler ////
     if(check == 1) { Rcout << "Stop at iter. " << i << "\n" ;
