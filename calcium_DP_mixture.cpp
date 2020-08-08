@@ -323,7 +323,6 @@ Rcpp::List calcium_gibbs_debug(int Nrep, arma::vec y,
     //// END Gibbs sampler ////
     if(check == 1) { Rcout << "Stop at iter. " << i << "\n" ;
       i = Nrep - 2 ; }
-    // if(i % 50 == 0) { Rcout << "Iteraz. " << i << "\n" ; }
   }
   return Rcpp::List::create(Rcpp::Named("calcium") = out_c,
                             Rcpp::Named("A") = out_A,

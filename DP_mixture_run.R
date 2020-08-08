@@ -27,7 +27,7 @@ sim_data <- function(n, lambda, time_spike, b, gamma, prob, par)
   s[time_spike] = 1
 
   k <- sample(1:length(prob), sum(s), prob, replace = TRUE)
-  A[time_spike] <- rnorm(sum(s), par[k], 0.02)
+  A[time_spike] <- par[k]
 
   for(i in 2:n)
   {
@@ -66,11 +66,11 @@ debug = calcium_gibbs_debug(Nrep = nrep, y = y,
                             p_start = 1-length(data$k)/length(data$y), 
                             c0 = 0, varC0 = 0.4, tau2 = 0.01, 
                             alpha = 1, 
-                            hyp_A1 = 5, hyp_A2 = 0.4, 
+                            hyp_A1 = 7, hyp_A2 = 1, 
                             hyp_b1 = 0, hyp_b2 = 1, 
-                            hyp_lambda1 = 10, hyp_lambda2 = 1, 
+                            hyp_lambda1 = 1, hyp_lambda2 = 1, 
                             hyp_gamma1 = 1, hyp_gamma2 = 2,
-                            hyp_p1 = 99, hyp_p2 = 1,
+                            hyp_p1 = 999, hyp_p2 = 1,
                             eps_gamma = 0.012)
 
 
