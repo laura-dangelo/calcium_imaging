@@ -39,9 +39,9 @@ sim_data <- function(n, lambda, time_spike, b, gamma, prob, par)
 data <- sim_data(n = 500, lambda = 10, time_spike = c(50,52, 140, 180, 250, 350, 420, 421, 460),
                  gamma = 0.8, b = 0,
                  prob = c(0.23, 0.44), par = c(4, 10))
-data <- sim_data(n = 1000, lambda = 10, time_spike = c(50,52, 180, 250, 350, 420, 421, 460,600, 662, 802,803,904),
-                 gamma = 0.8, b = 0,
-                 prob = c(0.23, 0.44, 0.33), par = c(4, 10, 6))
+# data <- sim_data(n = 1000, lambda = 10, time_spike = c(50,52, 180, 250, 350, 420, 421, 460,600, 662, 802,803,904),
+#                  gamma = 0.8, b = 0,
+#                  prob = c(0.23, 0.44, 0.33), par = c(4, 10, 6))
 y = data$y
 plot(y, type = "l")
 clus = data$s
@@ -52,22 +52,24 @@ data$k
 
 
 A_start = rep(0,50)
-# A_start[2] = 4
-# A_start[3] = 10
+A_start[2] = 4
+A_start[3] = 10
 
 
 n = length(y)
 nrep = 1000
 debug = calcium_gibbs_debug(Nrep = nrep, y = y, 
-                            cal = rep(0,n+1),
-                            cl = rep(0,n), A_start = A_start,
+                            cal = c(0,data$c),
+                            cl = clus, A_start = A_start,
                             b_start = 0,
-                            gamma_start = 0.5, lambda_start = 5, 
-                            p_start = 0.999, #1-length(data$k)/length(data$y), 
+                            gamma_start = 0.8, lambda_start = 10, 
+                            p_start = 1-length(data$k)/length(data$y), 
                             c0 = 0, varC0 = 0.4, tau2 = 0.01, 
-                            alpha = 1, psi2 = 1, 
-                            hyp_A1 = 1, hyp_A2 = 3, hyp_b1 = 0, hyp_b2 = 1, 
-                            hyp_gamma1 = 1, hyp_gamma2 = 2, hyp_lambda1 = 1, hyp_lambda2 = 1, 
+                            alpha = 1, 
+                            hyp_A1 = 5, hyp_A2 = 0.4, 
+                            hyp_b1 = 0, hyp_b2 = 1, 
+                            hyp_lambda1 = 10, hyp_lambda2 = 1, 
+                            hyp_gamma1 = 1, hyp_gamma2 = 2,
                             hyp_p1 = 99, hyp_p2 = 1,
                             eps_gamma = 0.012)
 
