@@ -13,46 +13,49 @@ str(y)
 rm(list = ("data"))
 plot(1:length(y), y, type = "l")
 y = y[4000:10000]
+
+n = length(y)
 plot(1:length(y), y, type = "l")
 
-
-plot(diff(y,1), type = "l")
 
 pr = which(diff(y,1)>0.22) + 1
-plot(1:length(y), y, type = "l")
-abline(v = pr, col = 2)
-
 clus = rep(0, length(y))
 clus[pr] = 1
 mean(y[pr])
 
-
 out = list()
 out$calcium = matrix(0,length(y)+1, 1)
 out$cluster = matrix(clus, length(y), 1)
-out$A = matrix(0, length(y), 1)
+out$A = matrix(0, 100, 1)
 out$A[2,1] = mean(y[pr])
 out$AA = matrix(NA, length(y), 1)
 out$b = 0
 out$gamma = 0.4
 out$lambda = 40
-out$p = 0.998
+out$p = 0.999
 
-nrep = 500
+tmp = rnorm(1e+4, 2, 0.4)
+hist(tmp[tmp>0])
+
+
+nrep = 300
 debug = calcium_gibbs_debug(Nrep = nrep, y = y, 
                             cal = out$calcium[,ncol(out$cluster)],
-                            cl = out$cluster[,ncol(out$cluster)], A_start = out$A[,ncol(out$cluster)],
+                            cl = out$cluster[,ncol(out$cluster)], 
+                            A_start = out$A[,ncol(out$cluster)],
                             b_start = out$b[length(out$b)],
-                            gamma_start = out$gamma[length(out$b)], lambda_start = out$lambda[length(out$b)], 
-                            p_start = out$p,
-                            c0 = 0, varC0 = 0.4, tau2 = 0.01, 
-                            alpha = 1, psi2 = 1, 
-                            hyp_A1 = 1, hyp_A2 = 1, 
+                            gamma_start = out$gamma[length(out$b)], 
+                            lambda_start = out$lambda[length(out$b)], 
+                            p_start = out$p[length(out$b)],
+                            c0 = 0, varC0 = 0.4, 
+                            tau2 = 0.01, 
+                            alpha = 1, 
+                            hyp_A1 = 3, hyp_A2 = 0.2, 
                             hyp_b1 = 0, hyp_b2 = 1, 
-                            hyp_gamma1 = 1, hyp_gamma2 = 2, 
-                            hyp_lambda1 = 10, hyp_lambda2 = 1, 
-                            hyp_p1 = 99, hyp_p2 = 1,
-                            eps_gamma = 0.2)
+                            hyp_lambda1 = 1, hyp_lambda2 = 1, 
+                            hyp_gamma1 = 1, hyp_gamma2 = 2,
+                            hyp_p1 = 9999, hyp_p2 = 1,
+                            eps_gamma = 0.012)
 
 
 str(debug) #1202
@@ -63,18 +66,20 @@ out$b = c(out$b, debug$b)
 out$gamma = c(out$gamma, debug$gamma)
 out$lambda = c(out$lambda, debug$lambda)
 out$A = cbind(out$A, debug$A)
+out$p = c(out$p, debug$p)
 
-n = length(y)
 
 plot(1:length(out$lambda), out$lambda, type = "l", xlab = "iterazioni", ylab = "lambda")
 lines(1:length(out$lambda), cumsum(out$lambda)/1:length(out$lambda), col =2)
 
 plot(1:length(out$b), out$b, type = "l", xlab = "iterazioni", ylab = "b")
 lines(1:length(out$b), cumsum(out$b)/1:length(out$b), col =2)
-plot(1:length(out$b), out$b, type = "l", xlab = "iterazioni", ylab = "b", ylim =c(-.1,.02))
 
 plot(1:length(out$gamma), out$gamma, type = "l", xlab = "iterazioni", ylab = "gamma")
 lines(1:length(out$gamma), cumsum(out$gamma)/1:length(out$gamma), col =2)
+
+plot(1:length(out$p), out$p, type = "l", xlab = "iterazioni", ylab = "gamma")
+lines(1:length(out$p), cumsum(out$p)/1:length(out$p), col =2)
 
 
 burnin = 1:1200
@@ -86,7 +91,7 @@ plot(0:n, rowMeans(out$calcium[,-burnin]), type = "l")
 lines(1:n, y, col="turquoise", lty = 2)
 
 obs = 1:500
-iter = 800:1800
+iter = 1:300
 image(1:(length(iter)), 1:(length(obs)), t(out$cluster[obs,iter]), 
       axes = F,
       xlab = "iterazioni", ylab = "osservazione",
