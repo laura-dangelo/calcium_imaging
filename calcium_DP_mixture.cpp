@@ -42,7 +42,6 @@ double logpost(const arma::vec& y, const arma::vec& cc, const arma::vec& A,
   return(out);
 }
 
-
 // generazione da normale troncata tra 0 e Inf
 double gen_truncnorm(double mean, double sd)
 {
@@ -51,7 +50,7 @@ double gen_truncnorm(double mean, double sd)
   return(out) ;
 }
 
-
+// trova differenza tra due vettori
 double missing_value(const arma::vec& x, const arma::vec& y)
 {
   double out = 0;
@@ -65,6 +64,7 @@ double missing_value(const arma::vec& x, const arma::vec& y)
 }
 
 
+// Polya-Urn
 arma::vec polya_urn(const arma::vec& y, arma::vec cluster, const arma::vec& cc,
                     arma::vec A, double b, double gamma, 
                     double p,
@@ -144,8 +144,10 @@ arma::vec polya_urn(const arma::vec& y, arma::vec cluster, const arma::vec& cc,
     
     if(cluster(j) == n_clus + 1)
     {
-      A(n_clus + 1) = gen_truncnorm( ( hyp_A2 * (y(j) - b - gamma * cc(j)) + (sigma2 + tau2) * hyp_A1 ) / (hyp_A2 + sigma2 + tau2) , 
-        std::sqrt((sigma2 + tau2) * hyp_A2 / (hyp_A2 + sigma2 + tau2)) ) ;
+      double precA = 1/(sigma2 + tau2) + 1/hyp_A2 ;
+      double meanA = 1/precA * ( (y(j) - b - gamma * cc(j))/(sigma2 + tau2) + hyp_A1/hyp_A1 ) ;
+      
+      A(n_clus + 1) = gen_truncnorm( meanA , std::sqrt(1/precA) ) ;
     }
   } 
   return(cluster) ;
@@ -153,13 +155,14 @@ arma::vec polya_urn(const arma::vec& y, arma::vec cluster, const arma::vec& cc,
 
 
 
+// Gibbs sampler: funzione principale
 // [[Rcpp::export]]
 Rcpp::List calcium_gibbs_debug(int Nrep, arma::vec y,
                                arma::vec cal,
-                               arma::vec cl, arma::vec A_start,
-                               double b_start,
-                               double gamma_start, double lambda_start,
-                               double p_start,
+                               arma::vec cl, 
+                               arma::vec A_start,
+                               double b_start, double gamma_start, 
+                               double lambda_start, double p_start,
                                double c0, double varC0,
                                double tau2,
                                double alpha, 
@@ -291,7 +294,6 @@ Rcpp::List calcium_gibbs_debug(int Nrep, arma::vec y,
                 sigma2, tau2,
                 alpha, 
                 hyp_A1, hyp_A2, check) ; 
- 
     //cluster.col(i+1) = cluster.col(i) ;
     
     // sampling of parameters A1,...,Ak
@@ -300,20 +302,23 @@ Rcpp::List calcium_gibbs_debug(int Nrep, arma::vec y,
     arma::vec tmp2 = arma::unique( non0 ) ; // unique labels 
     
     n_clus = tmp2.n_elem ; // number of clusters (n.unique \{0}) ...
-    arma::vec nj(n_clus) ;
-    arma::vec ssum(n_clus) ;
+    double nj = 0 ;
+    double ssum = 0;
+    double meanA = 0; double precA = 0;
     
     arma::vec lincomb(n) ;
     for(int l = 0; l < n; l++) { lincomb(l) = y(l) - out_b(i+1) - out_gamma(i+1) * out_c(l, i+1) ; }
     
     for(int k = 1; k < n_clus + 1; k++) 
     { 
-      nj(k-1) = std::count(non0.begin(), non0.end(), k) ; 
+      nj = std::count(non0.begin(), non0.end(), k) ; 
       arma::uvec idk = find( line == k ) ;
-      ssum(k-1) = arma::accu( lincomb(idk) ) ;
+      ssum = arma::accu( lincomb(idk) ) ;
       
-      out_A(k, i+1) = gen_truncnorm( (hyp_A2 * ssum(k-1) + (sigma2 + tau2) * hyp_A1) / (nj(k-1) * hyp_A2 + sigma2 + tau2), 
-            std::sqrt((sigma2 + tau2) * hyp_A2 / (nj(k-1) * hyp_A2 + sigma2 + tau2) )) ;
+      precA = nj/(sigma2 + tau2) + 1/hyp_A2 ;
+      meanA = 1/precA * ( ssum/(sigma2 + tau2) + hyp_A1/hyp_A1 ) ;
+      
+      out_A(k, i+1) = gen_truncnorm( meanA, std::sqrt(1/precA) ) ;
     }
     
     // Update p
@@ -321,8 +326,10 @@ Rcpp::List calcium_gibbs_debug(int Nrep, arma::vec y,
     out_p(i+1) = R::rbeta(hyp_p1 + n0, hyp_p2 + n - n0) ;
     
     //// END Gibbs sampler ////
-    if(check == 1) { Rcout << "Stop at iter. " << i << "\n" ;
-      i = Nrep - 2 ; }
+    if(check == 1) { 
+      Rcout << "Stop at iter. " << i << "\n" ;
+      i = Nrep - 2 ; 
+    }
   }
   return Rcpp::List::create(Rcpp::Named("calcium") = out_c,
                             Rcpp::Named("A") = out_A,
