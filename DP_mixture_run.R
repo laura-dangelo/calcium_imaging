@@ -39,37 +39,43 @@ sim_data <- function(n, lambda, time_spike, b, gamma, prob, par)
 data <- sim_data(n = 500, lambda = 10, time_spike = c(50,52, 140, 180, 250, 350, 420, 421, 460),
                  gamma = 0.8, b = 0,
                  prob = c(0.23, 0.44), par = c(4, 10))
-# data <- sim_data(n = 1000, lambda = 10, time_spike = c(50,52, 180, 250, 350, 420, 421, 460,600, 662, 802,803,904),
-#                  gamma = 0.8, b = 0,
-#                  prob = c(0.23, 0.44, 0.33), par = c(4, 10, 6))
+set.seed(123)
+data <- sim_data(n = 3000, lambda = 200, time_spike = c(380, 550, 820, 821, 1060,1600, 1850,1852, 2662, 2802,2803,2904),
+                 gamma = 0.6, b = 0,
+                 prob = c(0.23, 0.44, 0.33), par = c(2.6, 1, 0.5))
 y = data$y
 plot(y, type = "l")
+
+
 clus = data$s
 clus[clus>0] = data$k
 data$k
+c(2.6, 1, 0.5)[data$k]
 
 1-length(data$k)/length(data$y)
 
 
 A_start = rep(0,50)
-A_start[2] = 4
-A_start[3] = 10
 
+plot(function(x) dnorm(x, 2.5, 0.3), xlim=c(-0.2,3))
 
+y=y[1:1000]
 n = length(y)
 nrep = 1000
 debug = calcium_gibbs_debug(Nrep = nrep, y = y, 
-                            cal = c(0,data$c),
-                            cl = clus, A_start = A_start,
+                            cal = rep(0,n+1),
+                            cl = rep(0,n), 
+                            A_start = A_start,
                             b_start = 0,
                             gamma_start = 0.8, lambda_start = 10, 
-                            p_start = 1-length(data$k)/length(data$y), 
-                            c0 = 0, varC0 = 0.4, tau2 = 0.01, 
+                            p_start = 0.997, 
+                            c0 = 0, varC0 = 0.4, 
+                            tau2 = 0.001, 
                             alpha = 1, 
-                            hyp_A1 = 7, hyp_A2 = 1, 
+                            hyp_A1 = 2, hyp_A2 = 0.4, 
                             hyp_b1 = 0, hyp_b2 = 1, 
-                            hyp_lambda1 = 1, hyp_lambda2 = 1, 
-                            hyp_gamma1 = 1, hyp_gamma2 = 2,
+                            hyp_lambda1 = 50, hyp_lambda2 = 1, 
+                            hyp_gamma1 = 1, hyp_gamma2 = 1,
                             hyp_p1 = 999, hyp_p2 = 1,
                             eps_gamma = 0.012)
 
@@ -77,8 +83,8 @@ debug = calcium_gibbs_debug(Nrep = nrep, y = y,
 str(debug) #1202
 
 
-
-
+plot(1:length(debug$p), debug$p, type = "l")
+lines(1:length(debug$p), cumsum(debug$p)/1:length(debug$p), col =2)
 
 plot(1:length(debug$lambda), debug$lambda, type = "l", xlab = "iterazioni", ylab = "lambda")
 lines(1:length(debug$lambda), cumsum(debug$lambda)/1:length(debug$lambda), col =2)
@@ -89,20 +95,26 @@ lines(1:length(debug$b), cumsum(debug$b)/1:length(debug$b), col =2)
 plot(1:length(debug$gamma), debug$gamma, type = "l", xlab = "iterazioni", ylab = "gamma")
 lines(1:length(debug$gamma), cumsum(debug$gamma)/1:length(debug$gamma), col =2)
 
-plot(1:length(debug$p), debug$p, type = "l")
-lines(1:length(debug$p), cumsum(debug$p)/1:length(debug$p), col =2)
 
 
-obs = 1:250
-iter = 1:length(debug$gamma)
+# obs = 1:250
+# iter = 1:length(debug$gamma)
+# image(1:(length(iter)), 1:(length(obs)), t(debug$cluster[obs,iter]), 
+#       axes = F,
+#       xlab = "iterazioni", ylab = "osservazione",
+#       col = c("#ffffff", hcl.colors(10, "YlOrRd", rev = F)))
+# axis(1, at = seq(1, max(iter), by = 10))
+# axis(2, at = seq(1,max(obs), by = 1))
+
+obs = 1:500
 image(1:(length(iter)), 1:(length(obs)), t(debug$cluster[obs,iter]), 
       axes = F,
       xlab = "iterazioni", ylab = "osservazione",
       col = c("#ffffff", hcl.colors(10, "YlOrRd", rev = F)))
 axis(1, at = seq(1, max(iter), by = 10))
-axis(2, at = seq(1,max(obs), by = 1))
+axis(2, at = seq(1,length(obs), by = 1), labels = obs)
 
-obs = 251:500
+obs = 501:1000
 image(1:(length(iter)), 1:(length(obs)), t(debug$cluster[obs,iter]), 
       axes = F,
       xlab = "iterazioni", ylab = "osservazione",
@@ -111,9 +123,7 @@ axis(1, at = seq(1, max(iter), by = 10))
 axis(2, at = seq(1,length(obs), by = 1), labels = obs)
 
 
-
-
-burnin = 1:600
+burnin = 1:300
 
 mean(debug$lambda[-burnin])
 mean(debug$b[-burnin])
@@ -146,19 +156,24 @@ lines(1:n, mean(debug$b[-burnin]) + colMeans(calcium)[2:(n+1)], col = "turquoise
 abline(v = which( apply(t(debug$clus)[-burnin,], 2, function(x) mean(x != 0))>0.8), lty = 3, col = "salmon")
 which( apply(t(debug$clus)[-burnin,], 2, function(x) mean(x != 0))>0.8)
 
-
 hist(apply(debug$clus[,-burnin], 1, function(x) mean(x != 0)), main = "Distr. of spike probabilities")
 
 
-burnin = 1:600
+### number of clusters
+barplot( table(unlist(apply(debug$cluster[,-burnin], 2, function(x) unique(x[x>0])))), horiz = T)
+
+
+### cluster parameter
 minA = min( which(apply(debug$A[-1,-burnin], 1, function(x) sum(x == 0)) == nrep-(max(burnin))) )
 minA
 debug$A = debug$A[1:(minA +1),]
 str(debug$A)
 
 out_A = t(debug$A)
-str(out_A)
+head(out_A)
 
-sortA = t(apply(out_A, 1, sort, decreasing = TRUE))
-apply(sortA, 2, function(x) mean(x==0))
+sortA = t(apply(out_A[-burnin,], 1, sort, decreasing = TRUE))
+apply(sortA, 2, function(x) mean(x>0))
 round(colMeans(sortA),2)
+
+colMeans(AA[-burnin,which( apply(t(debug$clus)[-burnin,], 2, function(x) mean(x != 0))>0.8)])
