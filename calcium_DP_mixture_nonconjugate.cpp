@@ -12,14 +12,14 @@ using namespace Rcpp;
 
 
 // log-likelihood
-double loglik(const arma::vec& y, const arma::vec& cc, const arma::vec& A, 
+double loglik(const arma::vec& y, const arma::vec& cc, const arma::vec& AA, 
               double & b, double & gamma, double & sigma2, double & tau2)
 {
   int n = y.n_elem;
   arma::vec llik(n);
   
   for(int k = 0; k < n; k++) { 
-    llik(k) = R::dnorm(y(k), b + gamma * cc(k) + A(k+1), std::sqrt(sigma2 + tau2), true) ;
+    llik(k) = R::dnorm(y(k), b + gamma * cc(k) + AA(k+1), std::sqrt(sigma2 + tau2), true) ;
   }
   return arma::accu(llik);
 }
@@ -32,15 +32,34 @@ double logprior_gamma(double & gamma, double & hyp_gamma1, double & hyp_gamma2)
   return(out);
 }
 
+// prior on A
+double logprior_A(double & A, double & hyp_A1, double & hyp_A2) 
+{
+  double out;
+  out = R::dgamma( A, hyp_A1, hyp_A2, true );
+  return(out);
+}
+
 // log-posterior
-double logpost(const arma::vec& y, const arma::vec& cc, const arma::vec& A, 
+double logpost_gamma(const arma::vec& y, const arma::vec& cc, const arma::vec& AA, 
                double & b, double & gamma, double & sigma2, double & tau2, 
                double & hyp_gamma1, double & hyp_gamma2)
 {
   double out;
-  out = loglik(y, cc, A, b, gamma, sigma2, tau2) + logprior_gamma(gamma, hyp_gamma1, hyp_gamma2);
+  out = loglik(y, cc, AA, b, gamma, sigma2, tau2) + logprior_gamma(gamma, hyp_gamma1, hyp_gamma2) ;
   return(out);
 }
+
+double logpost_A(const arma::vec& y, const arma::vec& cc, double & A, 
+                     double & b, double & gamma, double & sigma2, double & tau2, 
+                     double & hyp_A1, double & hyp_A2)
+{
+  double out;
+  arma::vec AA(y.n_elem + 1) ; AA.fill(A) ;
+  out = loglik(y, cc, AA, b, gamma, sigma2, tau2) + logprior_A(A, hyp_A1, hyp_A2) ;
+  return(out);
+}
+
 
 
 // trova differenza tra due vettori
@@ -51,14 +70,14 @@ double missing_value(const arma::vec& x, const arma::vec& y)
   for(int i = 0; i < n; i++)
   {
     double lookfor = x(i) ;
-    if(std::count(y.begin(), y.end(), lookfor) == 0) { out = lookfor ;}
+    if(std::count(y.begin(), y.end(), lookfor) == 0) { out = lookfor ; }
   }
   return(out) ;
 }
 
 
 // Polya-Urn
-Rcpp::List polya_urn(const arma::vec& y, arma::vec cluster, const arma::vec& cc,
+Rcpp::List polya_urn_nonc(const arma::vec& y, arma::vec cluster, const arma::vec& cc,
                     arma::vec A, double b, double gamma, 
                     double p,
                     double sigma2, double tau2,
@@ -169,7 +188,7 @@ Rcpp::List polya_urn(const arma::vec& y, arma::vec cluster, const arma::vec& cc,
 
 // Gibbs sampler: funzione principale
 // [[Rcpp::export]]
-Rcpp::List calcium_gibbs_debug(int Nrep, arma::vec y,
+Rcpp::List calcium_gibbs_nonc(int Nrep, arma::vec y,
                                arma::vec cal,
                                arma::vec cl, 
                                arma::vec A_start,
@@ -183,7 +202,8 @@ Rcpp::List calcium_gibbs_debug(int Nrep, arma::vec y,
                                double hyp_lambda1, double hyp_lambda2,
                                double hyp_gamma1, double hyp_gamma2,
                                double hyp_p1, double hyp_p2,
-                               double eps_gamma)
+                               double eps_gamma,
+                               double eps_A)
 {
   // allocate output matrices
   int n = y.n_elem ;
@@ -216,7 +236,7 @@ Rcpp::List calcium_gibbs_debug(int Nrep, arma::vec y,
   double n_clus ;
   arma::vec AA = arma::zeros(n+1) ;
   Rcpp::List polyaurn ;
-  arma::vec oldA(A_start.n_elem) ;
+  double oldA ; double newA ;
   
   cluster.col(0) = cl ;
   out_A.col(0) = A_start; 
@@ -257,10 +277,8 @@ Rcpp::List calcium_gibbs_debug(int Nrep, arma::vec y,
       
       out_c(j, i+1) = R::rnorm(back_mean, back_var) ;
     }
-    
-    out_c.col(i+1) = out_c.col(i) ;
-    
-    
+    //out_c.col(i+1) = out_c.col(i) ;
+
     
     // sampling b
     arma::vec z(n) ; 
@@ -268,66 +286,82 @@ Rcpp::List calcium_gibbs_debug(int Nrep, arma::vec y,
     
     out_b(i+1) = R::rnorm( (hyp_b2 * hyp_b1 + out_lambda(i) * arma::accu(z)) / (hyp_b2 + n * out_lambda(i)) , 
           std::sqrt( 1/ (hyp_b2 + n * out_lambda(i)) ) ) ;
-    out_b(i+1) = out_b(i) ;
+    //out_b(i+1) = out_b(i) ;
     
     // sampling lambda (precision)
     arma::vec sq(n) ; 
     for(int j = 0; j < n; j++) { sq(j) = pow(z(j) - out_b(i+1), 2) ; }
     
     out_lambda(i+1) = R::rgamma(hyp_lambda1 + n/2, 1/(hyp_lambda2 + 0.5 * arma::accu(sq)) ) ;
-    out_lambda(i+1) = out_lambda(i) ;
+    //out_lambda(i+1) = out_lambda(i) ;
     sigma2 = 1/out_lambda(i+1) ;
     
     if( !out_b.is_finite() ) { check = 1 ; }
     if( !out_lambda.is_finite() ) { check = 1 ; }
-    
-
-    
+  
     
     //MH per gamma: random walk
     oldgamma = out_gamma(i) ;
-/*    newgamma = oldgamma + R::runif(-eps_gamma, eps_gamma) ;
-    ratio = exp( logpost(y, out_c.col(i+1), 
+    newgamma = oldgamma + R::runif(-eps_gamma, eps_gamma) ;
+    ratio = exp( logpost_gamma(y, out_c.col(i+1), 
                          AA, out_b(i+1), 
                          newgamma, sigma2, tau2,
                          hyp_gamma1, hyp_gamma2) -
-                  logpost(y, out_c.col(i+1), 
+                  logpost_gamma(y, out_c.col(i+1), 
                           AA, out_b(i+1), 
                           oldgamma, sigma2, tau2,
                           hyp_gamma1, hyp_gamma2) ) ;
     
-    if(R::runif(0, 1) < ratio) oldgamma = newgamma ;*/
+    if(R::runif(0, 1) < ratio) oldgamma = newgamma ;
     out_gamma(i+1) = oldgamma ;
     
     
     // Sampling of clusters and cluster parameters
     // Polya-Urn
-    polyaurn = polya_urn(y, cluster.col(i), out_c.col(i+1),
-                out_A.col(i), out_b(i+1), out_gamma(i+1), 
-                out_p(i),
-                sigma2, tau2,
-                alpha, m,
-                hyp_A1, hyp_A2, check) ; 
+    polyaurn = polya_urn_nonc(y, cluster.col(i), out_c.col(i+1),
+                    out_A.col(i), out_b(i+1), out_gamma(i+1), 
+                    out_p(i),
+                    sigma2, tau2,
+                    alpha, m,
+                    hyp_A1, hyp_A2, check) ; 
     arma::vec out_polya_clus = polyaurn["cluster"] ;
     cluster.col(i+1) = out_polya_clus ;
     //cluster.col(i+1) = cluster.col(i) ;
     
     // sampling of parameters A1,...,Ak
     arma::vec out_polya_A = polyaurn["A"] ;
-    oldA = out_polya_A ;
-    arma::vec line(n); line = cluster.col(i+1) ;
+    out_A.col(i+1) = out_polya_A ;
+    
+    arma::vec line(n) ; line = cluster.col(i+1) ;
     n_clus = line.max() ;
     
     for(int l = 1; l < n_clus + 1; l++)
     {
-      // MH step su A_l
+      // MH step su A(l)
+      oldA = out_A(l, i+1) ;
+      newA = oldA ;
+      
+      arma::uvec idk = find( line == l ) ;
+      arma::vec sub_y = y(idk) ;
+      arma::vec col_c = out_c.col(i+1) ;
+      
+      newA = oldA + R::runif(-eps_A, eps_A) ;
+      ratio = exp( logpost_A(sub_y, col_c(idk), 
+                            newA, out_b(i+1), 
+                            out_gamma(i+1), sigma2, tau2,
+                            hyp_A1, hyp_A2) -
+                    logpost_A(sub_y, col_c(idk), 
+                            oldA, out_b(i+1), 
+                            out_gamma(i+1), sigma2, tau2,
+                            hyp_A1, hyp_A2) ) ;
+      if(R::runif(0, 1) < ratio) oldA = newA ;
+      out_A(l, i+1) = oldA ;
     }
     
-    out_A.col(i+1) = oldA ;
     
     // Update p
     double n0 = std::count(line.begin(), line.end(), 0) ;
-    out_p(i+1) = out_p(i) ; //R::rbeta(hyp_p1 + n0, hyp_p2 + n - n0) ;
+    out_p(i+1) = R::rbeta(hyp_p1 + n0, hyp_p2 + n - n0) ;
     
     //// END Gibbs sampler ////
     if(check == 1) { 

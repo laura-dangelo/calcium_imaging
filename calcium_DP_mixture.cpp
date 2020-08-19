@@ -157,21 +157,21 @@ arma::vec polya_urn(const arma::vec& y, arma::vec cluster, const arma::vec& cc,
 
 // Gibbs sampler: funzione principale
 // [[Rcpp::export]]
-Rcpp::List calcium_gibbs_debug(int Nrep, arma::vec y,
-                               arma::vec cal,
-                               arma::vec cl, 
-                               arma::vec A_start,
-                               double b_start, double gamma_start, 
-                               double lambda_start, double p_start,
-                               double c0, double varC0,
-                               double tau2,
-                               double alpha, 
-                               double hyp_A1, double hyp_A2,
-                               double hyp_b1, double hyp_b2,
-                               double hyp_lambda1, double hyp_lambda2,
-                               double hyp_gamma1, double hyp_gamma2,
-                               double hyp_p1, double hyp_p2,
-                               double eps_gamma)
+Rcpp::List calcium_gibbs(int Nrep, arma::vec y,
+                          arma::vec cal,
+                          arma::vec cl, 
+                          arma::vec A_start,
+                          double b_start, double gamma_start, 
+                          double lambda_start, double p_start,
+                          double c0, double varC0,
+                          double tau2,
+                          double alpha, 
+                          double hyp_A1, double hyp_A2,
+                          double hyp_b1, double hyp_b2,
+                          double hyp_lambda1, double hyp_lambda2,
+                          double hyp_gamma1, double hyp_gamma2,
+                          double hyp_p1, double hyp_p2,
+                          double eps_gamma)
 {
   // allocate output matrices
   int n = y.n_elem ;
