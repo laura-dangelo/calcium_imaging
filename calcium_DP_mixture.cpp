@@ -109,8 +109,14 @@ arma::vec polya_urn(const arma::vec& y, arma::vec cluster, const arma::vec& cc,
       }
     }
     
-    double pr0 = log(p) + R::dnorm(y(j), b + gamma * cc(j), std::sqrt(sigma2 + tau2), true) ;
-    double pr_new = log(1-p) + log(alpha) + R::dnorm( y(j), b + gamma * cc(j) + hyp_A1, std::sqrt(sigma2 + tau2 + hyp_A2), true ) ;
+    double z =  y(j) - b - gamma * cc(j) ;
+    
+    double pr0 = log(p) + R::dnorm(z, 0, std::sqrt(sigma2 + tau2), true) ;
+    double pr_new = log(1-p) + log(alpha) + 
+      R::dnorm( z, hyp_A1, std::sqrt(sigma2 + tau2 + hyp_A2), true ) +
+      R::pnorm( (hyp_A2 * z + (sigma2 + tau2) * hyp_A1) / std::sqrt( (sigma2 + tau2 + hyp_A2) * (sigma2 + tau2) * hyp_A2) ,
+                 0, 1 , true, true ) -
+      R::pnorm( hyp_A1 / std::sqrt( hyp_A2 ) , 0, 1, true , true);
     //logmarginal(y(j), cc(j), b, gamma, sigma2 + tau2, hyp_A2) ;
     
     NumericVector prob(n_clus + 2); // cluster assignment probabilities: [ pr(0), pr(cl 1), pr(cl 2), ..., pr(cl K), pr(cl K+1) ]
