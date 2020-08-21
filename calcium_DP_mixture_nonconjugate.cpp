@@ -12,6 +12,11 @@ using namespace Rcpp;
 
 
 // log-likelihood
+/*
+ * y = (y_1, ... , y_n)  vec length = n
+ * cc = (c_0, ..., c_n-1, c_n)  vec length = n + 1
+ * AA = (A_0 = 0, A_1, ... , A_n)
+ */
 double loglik(const arma::vec& y, const arma::vec& cc, const arma::vec& AA, 
               double & b, double & gamma, double & sigma2, double & tau2)
 {
@@ -24,7 +29,11 @@ double loglik(const arma::vec& y, const arma::vec& cc, const arma::vec& AA,
   return arma::accu(llik);
 }
 
+
 // prior on gamma
+/*
+ * gamma ~ Beta(hyp_gamma1, hyp_gamma2)
+ */
 double logprior_gamma(double & gamma, double & hyp_gamma1, double & hyp_gamma2) 
 {
   double out;
@@ -40,7 +49,7 @@ double logprior_A(double & A, double & hyp_A1, double & hyp_A2)
   return(out);
 }
 
-// log-posterior
+// log-posterior (MH step on gamma)
 double logpost_gamma(const arma::vec& y, const arma::vec& cc, const arma::vec& AA, 
                double & b, double & gamma, double & sigma2, double & tau2, 
                double & hyp_gamma1, double & hyp_gamma2)
@@ -50,13 +59,19 @@ double logpost_gamma(const arma::vec& y, const arma::vec& cc, const arma::vec& A
   return(out);
 }
 
+
+// log-posterior (MH step on A)
+/*
+ * A ~ G0 = Gamma(hyp_A1, hyp_A2)
+ * la funzione prende in input solo le y_i t.c. A_i = A_k per un certo k = 1,..., K (fissato).
+ */
 double logpost_A(const arma::vec& y, const arma::vec& cc, double & A, 
                      double & b, double & gamma, double & sigma2, double & tau2, 
                      double & hyp_A1, double & hyp_A2)
 {
   double out;
-  arma::vec AA(y.n_elem + 1) ; AA.fill(A) ;
-  out = loglik(y, cc, AA, b, gamma, sigma2, tau2) + logprior_A(A, hyp_A1, hyp_A2) ;
+  arma::vec AAA(y.n_elem + 1) ; AAA.fill(A) ;
+  out = loglik(y, cc, AAA, b, gamma, sigma2, tau2) + logprior_A(A, hyp_A1, hyp_A2) ;
   return(out);
 }
 
@@ -101,10 +116,11 @@ Rcpp::List polya_urn_nonc(const arma::vec& y, arma::vec cluster, const arma::vec
     
   for(int j = 0; j < n; j++)
   {
+    old_c = cluster(j) ;
     old_A = A(old_c) ;
     A_tmp = A ;
     A = arma::zeros(A_tmp.n_elem) ;
-    old_c = cluster(j) ;
+   
     
     cluster(j) = (-99) ; // remove the j-th element
     
