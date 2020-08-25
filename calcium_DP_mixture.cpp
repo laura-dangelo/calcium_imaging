@@ -324,7 +324,7 @@ Rcpp::List calcium_gibbs(int Nrep, arma::vec y,
       ssum = arma::accu( lincomb(idk) ) ;
       
       precA = nj/(sigma2 + tau2) + 1/hyp_A2 ;
-      meanA = 1/precA * ( ssum/(sigma2 + tau2) + hyp_A1/hyp_A1 ) ;
+      meanA = 1/precA * ( ssum/(sigma2 + tau2) + hyp_A1/hyp_A2 ) ;
       
       out_A(k, i+1) = gen_truncnorm( meanA, std::sqrt(1/precA) ) ;
     }

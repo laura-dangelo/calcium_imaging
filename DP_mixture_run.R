@@ -70,7 +70,7 @@ while( sum(run$gamma == 0) > (nrep/2) )
                       A_start = A_start,
                       b_start = 0,
                       gamma_start = 0.9, lambda_start = 500, 
-                      p_start = 0.99, 
+                      p_start = 0.995, 
                       c0 = 0, varC0 = 0.4, 
                       tau2 = 0.0005,
                       alpha = 1, 
