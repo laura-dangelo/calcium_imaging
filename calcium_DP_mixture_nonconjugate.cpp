@@ -114,6 +114,7 @@ Rcpp::List polya_urn_nonc(const arma::vec& y, arma::vec cluster, const arma::vec
   arma::vec unique_non0 ;
   arma::vec labels ; 
   double diff ; arma::uvec ids ;
+  double denom = 0 ;
     
   for(int j = 0; j < n; j++)
   {
@@ -177,13 +178,13 @@ Rcpp::List polya_urn_nonc(const arma::vec& y, arma::vec cluster, const arma::vec
       for(int k = 1; k < n_clus + 1; k++)
       {
         double nj = std::count(non0.begin(), non0.end(), k) ;
-        prob[k] = log(nj) + log(1-p) + R::dnorm(y(j), b + gamma * cc(j) + A_tmp(k), std::sqrt(sigma2 + tau2), true) ;
+        prob[k] = log(nj) - log(non0.n_elem - 1 + alpha) + log(1-p) + R::dnorm(y(j), b + gamma * cc(j) + A_tmp(k), std::sqrt(sigma2 + tau2), true) ;
       }
     }
     
     for(int k = n_clus + 1; k < n_clus + m + 1; k++)
     {
-      prob[k] = log(1-p) + log(alpha/m) + R::dnorm(y(j), b + gamma * cc(j) + A_tmp(k), std::sqrt(sigma2 + tau2), true) ;
+      prob[k] = log(1-p) + log(alpha/m)  - log(non0.n_elem - 1 + alpha) + R::dnorm(y(j), b + gamma * cc(j) + A_tmp(k), std::sqrt(sigma2 + tau2), true) ;
     }
     
     double max_p = max(prob) ;
