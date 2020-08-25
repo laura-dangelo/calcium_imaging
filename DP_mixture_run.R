@@ -40,47 +40,41 @@ c(2.6, 1, 0.5)[data$k]
 
 A_start = rep(0,50)
 n = length(y)
-A_start[2:4] = c(2.6, 1, 0.5)
-clus = clus[1:n]
 
-plot(function(x) dnorm(x, 1.8, 0.4), 0, 3)
+plot(function(x) dnorm(x, 2.5, 0.3), 0, 3)
 
 nrep = 500
 run = calcium_gibbs(Nrep = nrep, y = y, 
-                      cal = #c(0, data$c ), 
-                    rep(0,n+1),
-                      cl = #clus, #
-                    rep(0,n), 
+                      cal = rep(0,n+1),
+                      cl = rep(0,n), 
                       A_start = A_start,
                       b_start = 0,
                       gamma_start = 0.9, lambda_start = 500, 
-                      p_start = 0.9985, 
+                      p_start = 0.995, 
                       c0 = 0, varC0 = 0.4, 
-                      tau2 = 0.0001,
+                      tau2 = 0.0008,
                       alpha = 1, 
-                      hyp_A1 = 2.2, hyp_A2 = 0.4^2, 
+                      hyp_A1 = 2.5, hyp_A2 = 0.3^2, 
                       hyp_b1 = 0, hyp_b2 = 1, 
                       hyp_lambda1 = 50, hyp_lambda2 = 1, 
                       hyp_gamma1 = 1, hyp_gamma2 = 1,
-                      hyp_p1 = 999, hyp_p2 = 100,
+                      hyp_p1 = 99, hyp_p2 = 1,
                       eps_gamma = 0.008)
 
 while( sum(run$gamma == 0) > (nrep/2) )
 {
   run = NULL
   run = calcium_gibbs(Nrep = nrep, y = y, 
-                      cal = #c(0, data$c ), 
-                        rep(0,n+1),
-                      cl = #clus, #
-                        rep(0,n), 
+                      cal = rep(0,n+1),
+                      cl = rep(0,n), 
                       A_start = A_start,
                       b_start = 0,
                       gamma_start = 0.9, lambda_start = 500, 
-                      p_start = 0.9985, 
+                      p_start = 0.99, 
                       c0 = 0, varC0 = 0.4, 
-                      tau2 = 0.0001,
+                      tau2 = 0.0005,
                       alpha = 1, 
-                      hyp_A1 = 2.2, hyp_A2 = 0.4^2, 
+                      hyp_A1 = 2.5, hyp_A2 = 0.3^2, 
                       hyp_b1 = 0, hyp_b2 = 1, 
                       hyp_lambda1 = 50, hyp_lambda2 = 1, 
                       hyp_gamma1 = 1, hyp_gamma2 = 1,
@@ -177,5 +171,5 @@ run$A = run$A[1:(minA +1),]
 str(run$A)
 
 out_A = t(run$A)
-out_A[900:1000,2:7]
+out_A[400:500,2:7]
 

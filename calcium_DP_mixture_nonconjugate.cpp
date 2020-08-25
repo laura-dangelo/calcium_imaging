@@ -178,7 +178,7 @@ Rcpp::List polya_urn_nonc(const arma::vec& y, arma::vec cluster, const arma::vec
       for(int k = 1; k < n_clus + 1; k++)
       {
         double nj = std::count(non0.begin(), non0.end(), k) ;
-        prob[k] = log(nj) - log(non0.n_elem - 1 + alpha) + log(1-p) + R::dnorm(y(j), b + gamma * cc(j) + A_tmp(k), std::sqrt(sigma2 + tau2), true) ;
+        prob[k] = log(1-p) + log(nj) - log(non0.n_elem - 1 + alpha) + R::dnorm(y(j), b + gamma * cc(j) + A_tmp(k), std::sqrt(sigma2 + tau2), true) ;
       }
     }
     

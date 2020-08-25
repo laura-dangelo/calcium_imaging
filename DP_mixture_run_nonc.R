@@ -42,27 +42,28 @@ c(2.6, 1, 0.5)[data$k]
 
 A_start = rep(0,50)
 n = length(y)
-A_start[2:4] = c(2.6, 1, 0.5)
+#A_start[2:4] = c(2.6, 1, 0.5)
 clus = clus[1:n]
 
 plot(function(x) dgamma(x, 200, 150), xlim=c(0,3) )
+
 plot(function(x) dnorm(x, 1.5, sqrt(150/100^2)), xlim=c(0,3), add=TRUE, col=2 )
 
 
 nrep = 1000
 run_nonc = calcium_gibbs_nonc(Nrep = nrep, y = y, 
-                            cal = #rep(0,n+1),
-                              c(0, data$c ),
-                            cl = #rep(0,n),
-                              clus, 
+                            cal = rep(0,n+1),
+                              #c(0, data$c ),
+                            cl = rep(0,n),
+                             # clus, 
                             A_start = A_start,
                             b_start = 0,
                             gamma_start = 0.9, lambda_start = 500, 
                             p_start = 0.9985, 
                             c0 = 0, varC0 = 0.4, 
-                            tau2 = 0.0001, 
+                            tau2 = 0.0005, 
                             alpha = 1, m = 20,
-                            hyp_A1 = 200, hyp_A2 = 1/150,  # funziona se parte dai punti giusti
+                            hyp_A1 = 250, hyp_A2 = 1/100,  
                             hyp_b1 = 0, hyp_b2 = 1, 
                             hyp_lambda1 = 50, hyp_lambda2 = 1, 
                             hyp_gamma1 = 1, hyp_gamma2 = 1,
