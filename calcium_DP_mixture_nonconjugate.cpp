@@ -104,23 +104,23 @@ Rcpp::List polya_urn_nonc(const arma::vec& y, arma::vec cluster, const arma::vec
   
   int n_clus = 0 ; 
   int n_j ;
-  double max_clus = 0 ;
-  arma::vec A_tmp ;
+  int max_clus = 0 ;
+  arma::vec A_tmp(A.n_elem) ;
   
   int old_c ;
   double old_A ;
   
-  arma::vec non0 ;
+  arma::vec non0 ; // potrebbero essere trasformati in vectors of integers
   arma::vec unique_non0 ;
-  arma::vec labels ; double diff ; arma::uvec ids ;
+  arma::vec labels ; 
+  double diff ; arma::uvec ids ;
     
   for(int j = 0; j < n; j++)
   {
     old_c = cluster(j) ;
     old_A = A(old_c) ;
     A_tmp = A ;
-    A = arma::zeros(A_tmp.n_elem) ;
-   
+    A.fill(0) ;
     
     cluster(j) = (-99) ; // remove the j-th element
     
@@ -130,13 +130,15 @@ Rcpp::List polya_urn_nonc(const arma::vec& y, arma::vec cluster, const arma::vec
     if(non0.n_elem > 0) 
     {
       unique_non0 = arma::unique( non0 ) ; // unique labels of existing clusters (-j)
-      max_clus = non0.max() ; // max label of the cluster
+      max_clus = unique_non0.max() ; // max label of the cluster
       A_tmp(max_clus + 1) = 0 ; // if the removed cluster was a singleton with the highest label
       n_clus = unique_non0.n_elem ; // number of clusters 
       
-      if(max_clus > n_clus) // it means that there is a "hole" in the label sequence
+      if(max_clus > n_clus) 
       {
+        // it means that there is a "hole" in the label sequence
         // if cluster(j) was a singleton
+        
         labels = arma::linspace(1, max_clus, max_clus) ;
         diff = missing_value(labels, unique_non0); // find missing label
         
@@ -163,6 +165,7 @@ Rcpp::List polya_urn_nonc(const arma::vec& y, arma::vec cluster, const arma::vec
         for(int l = 0; l < m; l++) { A_tmp(max_clus + 1 + l) = R::rgamma(hyp_A1, hyp_A2) ; }
       }
     }
+    // end if( non0.elem>0 )
     
     double pr0 = log(p) + R::dnorm(y(j), b + gamma * cc(j), std::sqrt(sigma2 + tau2), true) ;
     

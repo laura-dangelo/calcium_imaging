@@ -43,10 +43,14 @@ n = length(y)
 A_start[2:4] = c(2.6, 1, 0.5)
 clus = clus[1:n]
 
-nrep = 1000
+plot(function(x) dnorm(x, 1.8, 0.4), 0, 3)
+
+nrep = 500
 run = calcium_gibbs(Nrep = nrep, y = y, 
-                      cal = c(0, data$c ), #rep(0,n+1),
-                      cl = clus, #rep(0,n), 
+                      cal = #c(0, data$c ), 
+                    rep(0,n+1),
+                      cl = #clus, #
+                    rep(0,n), 
                       A_start = A_start,
                       b_start = 0,
                       gamma_start = 0.9, lambda_start = 500, 
@@ -54,12 +58,37 @@ run = calcium_gibbs(Nrep = nrep, y = y,
                       c0 = 0, varC0 = 0.4, 
                       tau2 = 0.0001,
                       alpha = 1, 
-                      hyp_A1 = 1.8, hyp_A2 = 200/150^2, ## ho dovuto alzare la media!
+                      hyp_A1 = 2.2, hyp_A2 = 0.4^2, 
                       hyp_b1 = 0, hyp_b2 = 1, 
                       hyp_lambda1 = 50, hyp_lambda2 = 1, 
                       hyp_gamma1 = 1, hyp_gamma2 = 1,
                       hyp_p1 = 999, hyp_p2 = 100,
                       eps_gamma = 0.008)
+
+while( sum(run$gamma == 0) > (nrep/2) )
+{
+  run = NULL
+  run = calcium_gibbs(Nrep = nrep, y = y, 
+                      cal = #c(0, data$c ), 
+                        rep(0,n+1),
+                      cl = #clus, #
+                        rep(0,n), 
+                      A_start = A_start,
+                      b_start = 0,
+                      gamma_start = 0.9, lambda_start = 500, 
+                      p_start = 0.9985, 
+                      c0 = 0, varC0 = 0.4, 
+                      tau2 = 0.0001,
+                      alpha = 1, 
+                      hyp_A1 = 2.2, hyp_A2 = 0.4^2, 
+                      hyp_b1 = 0, hyp_b2 = 1, 
+                      hyp_lambda1 = 50, hyp_lambda2 = 1, 
+                      hyp_gamma1 = 1, hyp_gamma2 = 1,
+                      hyp_p1 = 999, hyp_p2 = 100,
+                      eps_gamma = 0.008)
+}
+
+
 
 
 str(run) #1202
