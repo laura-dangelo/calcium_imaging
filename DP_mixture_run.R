@@ -16,7 +16,7 @@ sim_data <- function(n, lambda, time_spike, b, gamma, prob, par)
   
   for(i in 2:n)
   {
-    c[i] = gamma * c[i-1] + A[i] * s[i] + rnorm(1,0,0.01)
+    c[i] = gamma * c[i-1] + A[i] * s[i] 
   }
   return(list("y" = b + c + rnorm(n, 0, 1/sqrt(lambda)), "c" = c, "s" = s, "A" = A, "k" = k))
 }
@@ -26,6 +26,9 @@ set.seed(123)
 data <- sim_data(n = 6000, lambda = 500, time_spike = c(380, 1000, 1002, 1300, 2000, 2990, 4000, 4700, 4701, 5500),
                  gamma = 0.9, b = 0,
                  prob = c(0.23, 0.44, 0.33), par = c(2.6, 1.1, 0.5))
+# data <- sim_data(n = 6000, lambda = 500, time_spike = c(),
+#                  gamma = 0.9, b = 0,
+#                  prob = c(0.23, 0.44, 0.33), par = c(2.6, 1.1, 0.5))
 y = data$y
 plot(y, type = "l")
 
@@ -43,7 +46,8 @@ n = length(y)
 
 plot(function(x) dnorm(x, 2.5, 0.3), 0, 3)
 
-nrep = 500
+nrep = 1500
+set.seed(123)
 run = calcium_gibbs(Nrep = nrep, y = y, 
                       cal = rep(0,n+1),
                       cl = rep(0,n), 
@@ -51,8 +55,8 @@ run = calcium_gibbs(Nrep = nrep, y = y,
                       b_start = 0,
                       gamma_start = 0.9, lambda_start = 500, 
                       p_start = 0.995, 
-                      c0 = 0, varC0 = 0.4, 
-                      tau2 = 0.0008,
+                      c0 = 0, varC0 = 0.01, 
+                      tau2 = 0.001,
                       alpha = 1, 
                       hyp_A1 = 2.5, hyp_A2 = 0.3^2, 
                       hyp_b1 = 0, hyp_b2 = 1, 
@@ -60,27 +64,27 @@ run = calcium_gibbs(Nrep = nrep, y = y,
                       hyp_gamma1 = 1, hyp_gamma2 = 1,
                       hyp_p1 = 99, hyp_p2 = 1,
                       eps_gamma = 0.008)
-
-while( sum(run$gamma == 0) > (nrep/2) )
-{
-  run = NULL
-  run = calcium_gibbs(Nrep = nrep, y = y, 
-                      cal = rep(0,n+1),
-                      cl = rep(0,n), 
-                      A_start = A_start,
-                      b_start = 0,
-                      gamma_start = 0.9, lambda_start = 500, 
-                      p_start = 0.995, 
-                      c0 = 0, varC0 = 0.4, 
-                      tau2 = 0.0005,
-                      alpha = 1, 
-                      hyp_A1 = 2.5, hyp_A2 = 0.3^2, 
-                      hyp_b1 = 0, hyp_b2 = 1, 
-                      hyp_lambda1 = 50, hyp_lambda2 = 1, 
-                      hyp_gamma1 = 1, hyp_gamma2 = 1,
-                      hyp_p1 = 999, hyp_p2 = 100,
-                      eps_gamma = 0.008)
-}
+# 
+# while( sum(run$gamma == 0) > (nrep/2) )
+# {
+#   run = NULL
+#   run = calcium_gibbs(Nrep = nrep, y = y, 
+#                       cal = rep(0,n+1),
+#                       cl = rep(0,n), 
+#                       A_start = A_start,
+#                       b_start = 0,
+#                       gamma_start = 0.9, lambda_start = 500, 
+#                       p_start = 0.995, 
+#                       c0 = 0, varC0 = 0.4, 
+#                       tau2 = 0.001,
+#                       alpha = 1, 
+#                       hyp_A1 = 2.5, hyp_A2 = 0.3^2, 
+#                       hyp_b1 = 0, hyp_b2 = 1, 
+#                       hyp_lambda1 = 50, hyp_lambda2 = 1, 
+#                       hyp_gamma1 = 1, hyp_gamma2 = 1,
+#                       hyp_p1 = 999, hyp_p2 = 100,
+#                       eps_gamma = 0.008)
+# }
 
 
 
@@ -159,17 +163,17 @@ hist(apply(run$clus[,-burnin], 1, function(x) mean(x != 0)), main = "Distr. of s
 
 
 ### number of clusters
-head(t(run$cluster[375:383,-burnin]))
-barplot( table(unlist(apply(run$cluster[,-burnin], 2, function(x) unique(x[x>0])))), main="number of cluster")
+# head(t(run$cluster[375:383,-burnin]))
+# barplot( table(unlist(apply(run$cluster[,-burnin], 2, function(x) unique(x[x>0])))), main="number of cluster")
 plot(1:nrep, apply(run$cluster, 2, function(x) length(unique(x[x>0]))), pch=19, cex=0.2)
 
 
 ### cluster parameter
 minA = min( which(apply(run$A[-1,-burnin], 1, function(x) sum(x == 0)) == nrep-(max(burnin))) )
-minA
+minA -1
 run$A = run$A[1:(minA +1),]
 str(run$A)
 
 out_A = t(run$A)
-out_A[400:500,2:7]
+out_A[400:500,1:(minA)]
 

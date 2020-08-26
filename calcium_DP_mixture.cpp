@@ -32,7 +32,7 @@ double loglik(const arma::vec& y, const arma::vec& cc, const arma::vec& AA,
 // prior on gamma
 /*
  * gamma ~ Beta(hyp_gamma1, hyp_gamma2)
- */v
+ */
 double logprior_gamma(double & gamma, double & hyp_gamma1, double & hyp_gamma2) 
 {
   double out;
@@ -155,12 +155,15 @@ arma::vec polya_urn(const arma::vec& y, arma::vec cluster, const arma::vec& cc,
       check = 1 ;
     }
     
+    // sampling del cluster
     cluster(j) = Rcpp::sample(clusters_id, 1, false, prob)[0] ;
     
+    
+    // estraggo un nuovo parametro nel caso sia un nuovo cluster
     if(cluster(j) == n_clus + 1)
     {
       double precA = 1/(sigma2 + tau2) + 1/hyp_A2 ;
-      double meanA = 1/precA * ( (y(j) - b - gamma * cc(j))/(sigma2 + tau2) + hyp_A1/hyp_A1 ) ;
+      double meanA = 1/precA * ( (y(j) - b - gamma * cc(j))/(sigma2 + tau2) + hyp_A1/hyp_A2 ) ;
       
       A(n_clus + 1) = gen_truncnorm( meanA , std::sqrt(1/precA) ) ;
     }
@@ -178,15 +181,15 @@ Rcpp::List calcium_gibbs(int Nrep, arma::vec y,
                           arma::vec A_start,
                           double b_start, double gamma_start, 
                           double lambda_start, double p_start,
-                          double c0, double varC0,
-                          double tau2,
-                          double alpha, 
-                          double hyp_A1, double hyp_A2,
-                          double hyp_b1, double hyp_b2,
-                          double hyp_lambda1, double hyp_lambda2,
-                          double hyp_gamma1, double hyp_gamma2,
-                          double hyp_p1, double hyp_p2,
-                          double eps_gamma)
+                          double c0, double varC0, // media e varianza c0 (calcio istante 0)
+                          double tau2, // varianza su equazione del calcio
+                          double alpha, // concentration param DP
+                          double hyp_A1, double hyp_A2, // media e varianza Normale troncata (0, Inf) su A
+                          double hyp_b1, double hyp_b2, // media e varianza Normale su b
+                          double hyp_lambda1, double hyp_lambda2, // shape e rate Gamma su lambda (precision)
+                          double hyp_gamma1, double hyp_gamma2, // shape1 e shape2 Beta su gamma (parametro AR)
+                          double hyp_p1, double hyp_p2, // shape1 e shape2 Beta su p (prob di non-spike)
+                          double eps_gamma) // MH step size
 {
   // allocate output matrices
   int n = y.n_elem ;
@@ -284,7 +287,6 @@ Rcpp::List calcium_gibbs(int Nrep, arma::vec y,
     
 
     
-    
     //MH per gamma: random walk
     oldgamma = out_gamma(i) ;
     newgamma = oldgamma + R::runif(-eps_gamma, eps_gamma) ;
@@ -299,7 +301,7 @@ Rcpp::List calcium_gibbs(int Nrep, arma::vec y,
     
     if(R::runif(0, 1) < ratio) oldgamma = newgamma ;
     out_gamma(i+1) = oldgamma ;
-    /*
+    
     
     // Sampling of clusters and cluster parameters
     // Polya-Urn
@@ -310,7 +312,7 @@ Rcpp::List calcium_gibbs(int Nrep, arma::vec y,
                 alpha, 
                 hyp_A1, hyp_A2, check) ; 
     //cluster.col(i+1) = cluster.col(i) ;
-*/
+
     // sampling of parameters A1,...,Ak
     arma::vec line(n); line = cluster.col(i+1) ;
     arma::vec non0 = line.elem( find( line > 0 ) );
@@ -321,7 +323,6 @@ Rcpp::List calcium_gibbs(int Nrep, arma::vec y,
     double ssum = 0;
     double meanA = 0; double precA = 0;
     
-    /*
     arma::vec lincomb(n) ;
     for(int l = 0; l < n; l++) { lincomb(l) = y(l) - out_b(i+1) - out_gamma(i+1) * out_c(l, i+1) ; }
     
@@ -337,7 +338,7 @@ Rcpp::List calcium_gibbs(int Nrep, arma::vec y,
       out_A(k, i+1) = gen_truncnorm( meanA, std::sqrt(1/precA) ) ;
     }
     
-    */
+    
     // Update p
     double n0 = std::count(line.begin(), line.end(), 0) ;
     out_p(i+1) = R::rbeta(hyp_p1 + n0, hyp_p2 + n - n0) ;
