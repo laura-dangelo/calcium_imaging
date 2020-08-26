@@ -117,16 +117,15 @@ arma::vec polya_urn(const arma::vec& y, arma::vec cluster, const arma::vec& cc,
       }
     }
     
+    NumericVector prob(n_clus + 2); // cluster assignment probabilities: [ pr(0), pr(cl 1), pr(cl 2), ..., pr(cl K), pr(cl K+1) ]
+
     double z =  y(j) - b - gamma * cc(j) ;
     
+    // prob di non-spike
     double pr0 = log(p) + R::dnorm(z, 0, std::sqrt(sigma2 + tau2), true) ;
-    
-    double pr_new = log(1-p) + log(alpha) - log(non0.n_elem - 1 + alpha) + 
-                      R::dnorm( z, hyp_A1, std::sqrt(sigma2 + tau2 + hyp_A2), true ) ;
-      
-    NumericVector prob(n_clus + 2); // cluster assignment probabilities: [ pr(0), pr(cl 1), pr(cl 2), ..., pr(cl K), pr(cl K+1) ]
     prob[0] = pr0 ;
-    
+  
+    // prob di spike e assegno a un cluster esistente
     if(n_clus > 0)
     {
       for(int k = 1; k < n_clus + 1; k++)
@@ -137,8 +136,12 @@ arma::vec polya_urn(const arma::vec& y, arma::vec cluster, const arma::vec& cc,
       }
     }
     
+    // prob di spike e assegno a un nuovo cluster
+    double pr_new = log(1-p) + log(alpha) - log(non0.n_elem - 1 + alpha) + 
+                      R::dnorm( z, hyp_A1, std::sqrt(sigma2 + tau2 + hyp_A2), true ) ;
     prob[n_clus + 1] = pr_new ; 
     
+    // normalizzo e esponenziale
     double max_p = max(prob) ;
     prob = exp( prob - max_p ) ;
     
