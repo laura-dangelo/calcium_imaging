@@ -12,6 +12,11 @@ using namespace Rcpp;
 
 
 // log-likelihood
+/*
+ * y = (y_1, ... , y_n)  vec length = n
+ * cc = (c_0, ..., c_n-1, c_n)  vec length = n + 1
+ * AA = (A_0 = 0, A_1, ... , A_n)
+ */
 double loglik(const arma::vec& y, const arma::vec& cc, const arma::vec& AA, 
               double & b, double & gamma, double & sigma2, double & tau2)
 {
@@ -25,6 +30,9 @@ double loglik(const arma::vec& y, const arma::vec& cc, const arma::vec& AA,
 }
 
 // prior on gamma
+/*
+ * gamma ~ Beta(hyp_gamma1, hyp_gamma2)
+ */v
 double logprior_gamma(double & gamma, double & hyp_gamma1, double & hyp_gamma2) 
 {
   double out;
@@ -114,12 +122,8 @@ arma::vec polya_urn(const arma::vec& y, arma::vec cluster, const arma::vec& cc,
     double pr0 = log(p) + R::dnorm(z, 0, std::sqrt(sigma2 + tau2), true) ;
     
     double pr_new = log(1-p) + log(alpha) - log(non0.n_elem - 1 + alpha) + 
-      R::dnorm( z, hyp_A1, std::sqrt(sigma2 + tau2 + hyp_A2), true ) ;
+                      R::dnorm( z, hyp_A1, std::sqrt(sigma2 + tau2 + hyp_A2), true ) ;
       
-    //  R::pnorm( (hyp_A2 * z + (sigma2 + tau2) * hyp_A1) / std::sqrt( (sigma2 + tau2 + hyp_A2) * (sigma2 + tau2) * hyp_A2) ,
-    //             0, 1 , true, true ) -
-    //  R::pnorm( hyp_A1 / std::sqrt( hyp_A2 ) , 0, 1, true , true);
-    
     NumericVector prob(n_clus + 2); // cluster assignment probabilities: [ pr(0), pr(cl 1), pr(cl 2), ..., pr(cl K), pr(cl K+1) ]
     prob[0] = pr0 ;
     
@@ -129,7 +133,7 @@ arma::vec polya_urn(const arma::vec& y, arma::vec cluster, const arma::vec& cc,
       {
         double nj = std::count(non0.begin(), non0.end(), k) ;
         prob[k] = log(nj) - log(non0.n_elem - 1 + alpha)  + log(1-p) + 
-          R::dnorm(y(j), b + gamma * cc(j) + A(k), std::sqrt(sigma2 + tau2), true) ;
+                    R::dnorm(y(j), b + gamma * cc(j) + A(k), std::sqrt(sigma2 + tau2), true) ;
       }
     }
     
@@ -292,7 +296,7 @@ Rcpp::List calcium_gibbs(int Nrep, arma::vec y,
     
     if(R::runif(0, 1) < ratio) oldgamma = newgamma ;
     out_gamma(i+1) = oldgamma ;
-    
+    /*
     
     // Sampling of clusters and cluster parameters
     // Polya-Urn
@@ -303,7 +307,7 @@ Rcpp::List calcium_gibbs(int Nrep, arma::vec y,
                 alpha, 
                 hyp_A1, hyp_A2, check) ; 
     //cluster.col(i+1) = cluster.col(i) ;
-    
+*/
     // sampling of parameters A1,...,Ak
     arma::vec line(n); line = cluster.col(i+1) ;
     arma::vec non0 = line.elem( find( line > 0 ) );
@@ -314,6 +318,7 @@ Rcpp::List calcium_gibbs(int Nrep, arma::vec y,
     double ssum = 0;
     double meanA = 0; double precA = 0;
     
+    /*
     arma::vec lincomb(n) ;
     for(int l = 0; l < n; l++) { lincomb(l) = y(l) - out_b(i+1) - out_gamma(i+1) * out_c(l, i+1) ; }
     
@@ -329,6 +334,7 @@ Rcpp::List calcium_gibbs(int Nrep, arma::vec y,
       out_A(k, i+1) = gen_truncnorm( meanA, std::sqrt(1/precA) ) ;
     }
     
+    */
     // Update p
     double n0 = std::count(line.begin(), line.end(), 0) ;
     out_p(i+1) = R::rbeta(hyp_p1 + n0, hyp_p2 + n - n0) ;
