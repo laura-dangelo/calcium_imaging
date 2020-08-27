@@ -1,7 +1,7 @@
 library(Rcpp)
 library(RcppDist)
 # install.packages("RcppProgress")
-sourceCpp('calcium_DP_mixture_samplingtau.cpp')
+sourceCpp('calcium_DP_mixture_2708.cpp')
 
 ## mixture ##
 sim_data <- function(n, sigma2, tau2, time_spike, b, gamma, prob, par)
@@ -52,22 +52,19 @@ nrep = 500
 set.seed(123)
 run = calcium_gibbs(Nrep = nrep, y = y, 
                     cal = c(0,y),
-                           # c(0, data$c),
                     cl = rep(0,n), 
-                         # clus,
                     A_start = A_start,
                     b_start = 0,
                     gamma_start = 0.9, 
-                    sigma2_start = 1/1000, 
-                    tau2_start = 0.0001, 
+                    sigma2_start = 0.001, 
+                    tau2_start = 0.001, 
                     p_start = 0.99, 
-                               # 1-length(data$k)/length(data$y), 
                     c0 = 0, varC0 = 0.1, 
                     alpha = 1, 
-                    hyp_A1 = 2.5, hyp_A2 = 0.5^2, 
+                    hyp_A1 = 2, hyp_A2 = 0.5^2, 
                     hyp_b1 = 0, hyp_b2 = 1, 
                     hyp_sigma21 = 1000, hyp_sigma22 = 1, 
-                    hyp_tau21 = 0.001, hyp_tau22 = 100, 
+                    hyp_tau21 = 1000, hyp_tau22 = 1, 
                     hyp_gamma1 = 1, hyp_gamma2 = 1,
                     hyp_p1 = 99, hyp_p2 = 1,
                     eps_gamma = 0.005)
