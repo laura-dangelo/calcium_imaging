@@ -114,7 +114,7 @@ axis(2, at = seq(1,length(obs), by = 1), labels = obs)
 burnin = 1:300
 
 mean(run$sigma2[-burnin])
-mean(run$tau[-burnin])
+mean(run$tau2[-burnin])
 mean(run$b[-burnin])
 mean(run$gamma[-burnin])
 
