@@ -208,38 +208,19 @@ cluster[data2$s == 1] = data2$k
 
 nrep = 900
 set.seed(1234)
-# run7 = calcium_gibbs(Nrep = nrep, y = y2,
-#                      cal = c(0,y2),
-#                      cl = cluster,
-#                      A_start = A_start,
-#                      b_start = 0,
-#                      gamma_start = 0.9,
-#                      sigma2_start = 0.002,
-#                      tau2_start = 0.001,
-#                      p_start = 0.99,
-#                      c0 = 0, varC0 = 0.1,
-#                      alpha = 1, m = 5,
-#                      hyp_A1 = 10, hyp_A2 = 10,
-#                      hyp_b1 = 0, hyp_b2 = 1,
-#                      hyp_sigma21 = 1000, hyp_sigma22 = 1,
-#                      hyp_tau21 = 1000, hyp_tau22 = 1,
-#                      hyp_gamma1 = 1, hyp_gamma2 = 1,
-#                      hyp_p1 = 99, hyp_p2 = 1,
-#                      eps_gamma = 0.005,
-#                      eps_A = 0.002)
 
 run7 = calcium_gibbs(Nrep = nrep, y = y2, 
                             cal = c(0,y2),
                             cl = cluster, 
                             A_start = A_start,
                             b_start = 0,
-                            gamma_start = 0.9, 
+                            gamma_start = 0.6, 
                             sigma2_start = 0.002, 
                             tau2_start = 0.001, 
                             p_start = 0.01, 
                             c0 = 0, varC0 = 0.1, 
                             alpha = 1, m = 1,
-                            hyp_A1 = 10, hyp_A2 = 10, 
+                            hyp_A1 = 7, hyp_A2 = 14, 
                             hyp_b1 = 0, hyp_b2 = 1, 
                             hyp_sigma21 = 1000, hyp_sigma22 = 1, 
                             hyp_tau21 = 1000, hyp_tau22 = 1, 
@@ -260,7 +241,7 @@ run7 = calcium_gibbs(Nrep = nrep, y = y2,
 # run7$p = run7$p[-burnin]
 # save(run7, file = "res_sim_1709_par4_low.Rdata")
 
-burnin = 1
+burnin = 500
 plot(1:length(run7$p[-burnin]), run7$p[-burnin], type = "l")
 lines(1:length(run7$p[-burnin]), cumsum(run7$p[-burnin])/1:length(run7$p[-burnin]), col =2)
 
