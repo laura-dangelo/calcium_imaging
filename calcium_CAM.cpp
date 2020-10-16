@@ -227,8 +227,7 @@ Rcpp::List slice_sampler(const arma::vec& y, const arma::vec& g,
     }
      omega_lk.col(k-1) = stick_breaking( v_lk ) ;
   }
-  
-  
+
   // step 5: sample the distributional cluster indicator
   NumericVector probK(maxK) ;
   IntegerVector clusterD_id =  Rcpp::seq(1, maxK);
@@ -254,10 +253,9 @@ Rcpp::List slice_sampler(const arma::vec& y, const arma::vec& g,
     clusterD(j) = Rcpp::sample(clusterD_id, 1, false, probK)[0] ;
   }
 
-    
   // step 6: sample the observational cluster indicator
   NumericVector probL(maxL) ;
-  IntegerVector clusterO_id = Rcpp::seq(0, maxL) ;
+  IntegerVector clusterO_id = Rcpp::seq(0, maxL-1) ;
   for(int t = 0; t < T; t++)
   {
     for(int l = 0; l < maxL; l++)
@@ -273,7 +271,6 @@ Rcpp::List slice_sampler(const arma::vec& y, const arma::vec& g,
     if( A(clusterO(t)) == 0 ) { clusterO(t) = 0 ; }
   }
   
-  /*
   // step 7: sample the cluster parameters
   for(int l = 1; l < maxL; l++)
   {
@@ -301,7 +298,7 @@ Rcpp::List slice_sampler(const arma::vec& y, const arma::vec& g,
       A(l) = sample_mix(p, hyp_A1, hyp_A2) ;
     }
   }
-*/      
+      
   return Rcpp::List::create(Rcpp::Named("clusterO") = clusterO,
                             Rcpp::Named("clusterD") = clusterD,
                             Rcpp::Named("A") = A);
