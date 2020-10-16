@@ -176,9 +176,7 @@ Rcpp::List slice_sampler(const arma::vec& y, const arma::vec& g,
   arma::vec maxK_j(J) ;
   maxK_j = 1 + arma::floor( (log(u_D) - log(1 - kappa_D)) / log(kappa_D) ) ;
   int maxK = std::max(clusterD.max(), maxK_j.max()) ; // upper bound su numero di distribuzioni
-  Rcout << "unif D" << u_D << "\n" ;
-  Rcout << "max K " << maxK << "\n" ;
-/* 
+
   // step 2: sample latent uniform on the observations
   for(int t = 0; t < T; t++)
   {
@@ -230,9 +228,10 @@ Rcpp::List slice_sampler(const arma::vec& y, const arma::vec& g,
      omega_lk.col(k-1) = stick_breaking( v_lk ) ;
   }
   
+  
   // step 5: sample the distributional cluster indicator
   NumericVector probK(maxK) ;
-  IntegerVector clusterD_id =  Rcpp::seq(1, maxK + 1);
+  IntegerVector clusterD_id =  Rcpp::seq(1, maxK);
   for(int j = 0; j < J; j++)
   {
     for(int k = 0; k < maxK; k++)
@@ -240,15 +239,22 @@ Rcpp::List slice_sampler(const arma::vec& y, const arma::vec& g,
       probK[k] = 0 ;
       if( u_D(j) < xi_D(k) )
       {
-        arma::vec subomega = omega_lk.col(k) ;
-        arma::uvec ind_om = find(g == j) ;
-        subomega = subomega.elem(ind_om) ;
+        arma::vec omega_col = omega_lk.col(k) ;
+        arma::uvec ind_t = find(g == (j+1)) ;
+        arma::vec ind_om = arma::unique( clusterO.elem( ind_t ) ) ;
+        
+        arma::vec subomega( ind_om.n_elem ) ;
+        for(int h = 0; h < ind_om.n_elem; h++)
+        {
+          subomega(h) = omega_col( ind_om(h) ) ;
+        }
         probK[k] = pi_k(k) / xi_D(k) * arma::prod(subomega) ;
       }
     }
     clusterD(j) = Rcpp::sample(clusterD_id, 1, false, probK)[0] ;
   }
-  
+
+    
   // step 6: sample the observational cluster indicator
   NumericVector probL(maxL) ;
   IntegerVector clusterO_id = Rcpp::seq(0, maxL) ;
@@ -267,7 +273,7 @@ Rcpp::List slice_sampler(const arma::vec& y, const arma::vec& g,
     if( A(clusterO(t)) == 0 ) { clusterO(t) = 0 ; }
   }
   
-  
+  /*
   // step 7: sample the cluster parameters
   for(int l = 1; l < maxL; l++)
   {

@@ -91,7 +91,7 @@ cluster[AA == A_start[5]] = 4
 cluster[AA == A_start[6]] = 5
 
 n = length(y)
-nrep = 2
+nrep = 300
 set.seed(1234)
 
 run = calcium_gibbs(Nrep = nrep, 
@@ -117,6 +117,20 @@ run = calcium_gibbs(Nrep = nrep,
                     eps_gamma = 0.01,
                     eps_A = 0.002)
 
+
+s = slice_sampler(y, g, 
+              clusterD = c(1,2,1,3), clusterO = cluster, 
+              c(0,y),
+              A_start, b = 0, gamma = 0.6, 
+              p = 0.95,
+              sigma2, tau2,
+              alpha = 1, beta = 1, 
+              hyp_A1 = 7, hyp_A2 = 10,  
+              kappa_D = 0.5, kappa_O = 0.5, 
+              xi_D = 0.5 * (0.5^c(0:100)), xi_O = 0.5 * (0.5^c(0:100)), 
+              eps_A = 0.3,
+              check = 0)
+
 # burnin = 1:500
 # run$calcium = run$calcium[,-burnin]
 # run$cluster = run$cluster[,-burnin]
@@ -128,7 +142,7 @@ run = calcium_gibbs(Nrep = nrep,
 # run$p = run$p[-burnin]
 # save(run, file = "res_sim_1709_par4_low.Rdata")
 
-burnin = 1:500
+burnin = 1
 plot(1:length(run$p[-burnin]), run$p[-burnin], type = "l")
 lines(1:length(run$p[-burnin]), cumsum(run$p[-burnin])/1:length(run$p[-burnin]), col =2)
 
@@ -145,9 +159,12 @@ plot(1:length(run$gamma[-burnin]), run$gamma[-burnin], type = "l", xlab = "itera
 lines(1:length(run$gamma[-burnin]), cumsum(run$gamma[-burnin])/1:length(run$gamma[-burnin]), col =2)
 
 
-
 mean(run$sigma2[-burnin])
 mean(run$tau2[-burnin])
 mean(run$b[-burnin])
 mean(run$gamma[-burnin])
 
+
+run$A[1:10,1:20] #valori, iterazioni
+run$clusterO[377:387,1:10]
+run$clusterD[,1:10]
