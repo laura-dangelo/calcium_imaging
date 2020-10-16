@@ -132,6 +132,7 @@ arma::vec stick_breaking(arma::vec beta_var)
 /*
  * Slice sampler
  */
+// [[Rcpp::export]]
 Rcpp::List slice_sampler(const arma::vec& y, const arma::vec& g, 
                           arma::vec clusterD, arma::vec clusterO, 
                           const arma::vec& cc,
@@ -155,7 +156,7 @@ Rcpp::List slice_sampler(const arma::vec& y, const arma::vec& g,
  
   int T = y.n_elem ;
   arma::vec clusterD_long(T) ;
-  for(int t = 0; t < T; t++) { clusterD_long(t) = clusterD(g(t)) ; }
+  for(int t = 0; t < T; t++) { clusterD_long(t) = clusterD( g(t)-1 ) ; }
   
   arma::vec unique_g = arma::unique(g) ;
   int J = unique_g.n_elem ;
@@ -166,7 +167,7 @@ Rcpp::List slice_sampler(const arma::vec& y, const arma::vec& g,
   double oldA ;
   double newA ;
   double ratio ;
-  
+ 
   // step 1: sample latent uniform on the distributions
   for(int j = 0; j < J; j++)
   {
@@ -175,7 +176,9 @@ Rcpp::List slice_sampler(const arma::vec& y, const arma::vec& g,
   arma::vec maxK_j(J) ;
   maxK_j = 1 + arma::floor( (log(u_D) - log(1 - kappa_D)) / log(kappa_D) ) ;
   int maxK = std::max(clusterD.max(), maxK_j.max()) ; // upper bound su numero di distribuzioni
-  
+  Rcout << "unif D" << u_D << "\n" ;
+  Rcout << "max K " << maxK << "\n" ;
+/* 
   // step 2: sample latent uniform on the observations
   for(int t = 0; t < T; t++)
   {
@@ -292,7 +295,7 @@ Rcpp::List slice_sampler(const arma::vec& y, const arma::vec& g,
       A(l) = sample_mix(p, hyp_A1, hyp_A2) ;
     }
   }
-      
+*/      
   return Rcpp::List::create(Rcpp::Named("clusterO") = clusterO,
                             Rcpp::Named("clusterD") = clusterD,
                             Rcpp::Named("A") = A);
@@ -385,7 +388,10 @@ Rcpp::List calcium_gibbs(int Nrep,
     AA(0) = 0 ;
     for(int j = 1; j < n+1; j++) { AA(j) =  out_A(clusterO(j-1,i), i) ; }
     
-    // sampling calcium: kalman filter
+    /*
+     * Sampling calcium level
+     * Kalman filter + backward sampling
+     */
     a(0) = 0 ; // a0
     R(0) = varC0 ; // R0
     filter_mean(0) = 0 ;
@@ -411,8 +417,9 @@ Rcpp::List calcium_gibbs(int Nrep,
     // out_c.col(i+1) = out_c.col(i) ;
     
     
-    
-    // sampling b
+    /*
+     * Sampling b
+     */
     arma::vec z(n) ; 
     for(int j = 0; j < n; j++) { z(j) = y(j) - out_c(j+1, i+1) ; } 
     
@@ -420,7 +427,10 @@ Rcpp::List calcium_gibbs(int Nrep,
           std::sqrt( 1/ (hyp_b2 + n / out_sigma2(i)) ) ) ;
     // out_b(i+1) = out_b(i) ;
     
-    // sampling sigma2
+    
+    /*
+     * Sampling sigma2
+     */
     arma::vec sq(n) ; 
     for(int j = 0; j < n; j++) { sq(j) = (z(j) - out_b(i+1)) * (z(j) - out_b(i+1)) ; }
     
@@ -428,7 +438,9 @@ Rcpp::List calcium_gibbs(int Nrep,
     // out_sigma2(i+1) = out_sigma2(i) ;
     
     
-    // sampling tau2
+    /*
+     * Sampling tau2
+     */
     arma::vec sq2(n) ; 
     for(int j = 0; j < n ; j++) { sq2(j) = (out_c(j+1,i+1) - out_gamma(i) * out_c(j,i+1) - AA(j+1)) * 
        (out_c(j+1,i+1) - out_gamma(i) * out_c(j,i+1) - AA(j+1)) ; }
@@ -436,8 +448,10 @@ Rcpp::List calcium_gibbs(int Nrep,
     // out_tau2(i+1) = out_tau2(i) ;
     
     
-    
-    //MH per gamma: random walk
+    /*
+     * Sampling gamma
+     * MH step with uniform random walk
+     */
     oldgamma = out_gamma(i) ;
     newgamma = oldgamma + R::runif(-eps_gamma, eps_gamma) ;
     ratio = exp( logpost_gamma(y, out_c.col(i+1), 
@@ -452,9 +466,10 @@ Rcpp::List calcium_gibbs(int Nrep,
     out_gamma(i+1) = oldgamma ;
     
     
-    // Sampling of clusters and cluster parameters
-    // Polya-Urn
     /*
+     * Sampling of clusters and cluster parameters
+     * Slice sampler
+     */
     out_slice = slice_sampler(y, g, 
                               clusterD.col(i), clusterO.col(i), 
                               out_c.col(i+1),
@@ -467,7 +482,7 @@ Rcpp::List calcium_gibbs(int Nrep,
                               xi_D, xi_O, 
                               eps_A,
                               check) ;
-*/
+
 //    arma::vec out_slice_clusO = out_slice["clusterO"] ;
  //   clusterO.col(i+1) = out_slice_clusO ;
     clusterO.col(i+1) = clusterO.col(i) ;
@@ -479,15 +494,18 @@ Rcpp::List calcium_gibbs(int Nrep,
 //    arma::vec out_slice_A = out_slice["A"] ;
  //   out_A.col(i+1) = out_slice_A ;
     out_A.col(i+1) = out_A.col(i) ;
-//    
+    
 
-    // Update p
+    /*
+     * Sampling p (spike and slab proportion)
+     */
     arma::vec line(n) ; line = clusterO.col(i+1) ;
     double n0 = std::count(line.begin(), line.end(), 0) ;
     
     out_p(i+1) = R::rbeta(hyp_p2 + n - n0, hyp_p1 + n0) ;
-    //   out_p(i+1) = out_p(i) ;
     if(out_p(i+1) > 0.1) { check = 1 ; }
+    //   out_p(i+1) = out_p(i) ;
+
     
     
     //// END Gibbs sampler ////
