@@ -263,14 +263,14 @@ Rcpp::List slice_sampler(const arma::vec& y, const arma::vec& g,
       probL[l] = 0 ;
       if( u_O(t) < xi_O(l) )
       {
-        probL[l] = omega_lk(l, clusterD(g(t)-1)) / xi_O(l) * R::dnorm(y(t) - b - gamma * cc(t), A(l), std::sqrt(sigma2 + tau2), false) ;
+        probL[l] = omega_lk(l, clusterD(g(t)-1)-1) / xi_O(l) * R::dnorm(y(t) - b - gamma * cc(t), A(l), std::sqrt(sigma2 + tau2), false) ;
       }
     }
     
     clusterO(t) = Rcpp::sample(clusterO_id, 1, false, probL)[0] ;
     if( A(clusterO(t)) == 0 ) { clusterO(t) = 0 ; }
   }
-  
+ /* 
   // step 7: sample the cluster parameters
   for(int l = 1; l < maxL; l++)
   {
@@ -298,7 +298,7 @@ Rcpp::List slice_sampler(const arma::vec& y, const arma::vec& g,
       A(l) = sample_mix(p, hyp_A1, hyp_A2) ;
     }
   }
-      
+      */
   return Rcpp::List::create(Rcpp::Named("clusterO") = clusterO,
                             Rcpp::Named("clusterD") = clusterD,
                             Rcpp::Named("A") = A);
@@ -473,7 +473,7 @@ Rcpp::List calcium_gibbs(int Nrep,
      * Sampling of clusters and cluster parameters
      * Slice sampler
      */
-    out_slice = slice_sampler(y, g, 
+/*    out_slice = slice_sampler(y, g, 
                               clusterD.col(i), clusterO.col(i), 
                               out_c.col(i+1),
                               out_A.col(i), out_b(i+1), out_gamma(i+1), 
@@ -484,7 +484,7 @@ Rcpp::List calcium_gibbs(int Nrep,
                               kappa_D, kappa_O, 
                               xi_D, xi_O, 
                               eps_A,
-                              check) ;
+                              check) ;*/
 
 //    arma::vec out_slice_clusO = out_slice["clusterO"] ;
  //   clusterO.col(i+1) = out_slice_clusO ;
