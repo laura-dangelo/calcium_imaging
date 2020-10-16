@@ -140,18 +140,22 @@ Rcpp::List slice_sampler(const arma::vec& y, const arma::vec& g,
                           double sigma2, double tau2,
                           double & alpha, 
                           double & hyp_A1, double & hyp_A2,  
-                          double & kappa_D, double & kappa_O,
+                          double & kappa_D, double & kappa_O, // 0.5 per far sì che sia il valor medio
                           const arma::vec& xi_D, const arma::vec& xi_O, 
+                          double & eps_A,
                           int & check)
 {
   /*
    * clusterD (lunghezza = J) allocazione del cluster sulle distribuzioni assume valori in {1,2,3,...}
    * clusterO (lunghezza = T) allocazione del cluster delle osservazioni assume valori in {0,1,2,3,...}, dove 0 indica lo spike
+   * 
+   * xi_O = (xi^O_1, xi^O_2, ...)
+   * xi_D = (xi^D_1, xi^D_2, ...)
    */
   
   int T = y.n_elem ;
   arma::vec clusterD_long(T) ;
-  for(int t = 0; t < T; t++) { clusterD_long = clusterD(g(t)) ; }
+  for(int t = 0; t < T; t++) { clusterD_long(t) = clusterD(g(t)) ; }
   
   arma::vec unique_g = arma::unique(g) ;
   int J = unique_g.n_elem ;
@@ -159,7 +163,11 @@ Rcpp::List slice_sampler(const arma::vec& y, const arma::vec& g,
   arma::vec u_O(T) ;
   arma::vec u_D(J) ;
   
-  // step 1: sample latent uniform on the distribution
+  double oldA ;
+  double newA ;
+  double ratio ;
+  
+  // step 1: sample latent uniform on the distributions
   for(int j = 0; j < J; j++)
   {
     u_D(j) = R::runif( 0, xi_D(clusterD(j)-1) ) ;
@@ -177,7 +185,7 @@ Rcpp::List slice_sampler(const arma::vec& y, const arma::vec& g,
   maxL_t = 1 + arma::floor( (log(u_O) - log(1 - kappa_O)) / log(kappa_O) ) ;
   int maxL = std::max(clusterO.max(), maxL_t.max()) ; // upper bound su numero di parametri per ogni distribuzione
   
-  // step 3: sample the stick-breaking weights on the distribution
+  // step 3: sample the stick-breaking weights on the distributions
   arma::vec v_k(maxK) ;
   arma::vec pi_k(maxK) ;
   for(int k = 1; k < maxK + 1; k++)
@@ -202,17 +210,90 @@ Rcpp::List slice_sampler(const arma::vec& y, const arma::vec& g,
       
     for(int l = 0; l < maxL; l++)
     {
-      arma::uvec ind_lk = find(subcluster == l) ; //potrebbe creare problemi su label vuote
-      arma::uvec ind_mlk = find(subcluster > l) ;
+      int a_lk = 1 ;
+      double b_lk = alpha ;
       
-      int a_lk = 1 + ind_lk.n_elem ;
-      double b_lk = alpha + ind_mlk.n_elem ;
+      if( subcluster.n_elem > 0 )
+      {
+        arma::uvec ind_lk = find(subcluster == l) ; 
+        arma::uvec ind_mlk = find(subcluster > l) ;
+        
+        a_lk = 1 + ind_lk.n_elem ;
+        b_lk = alpha + ind_mlk.n_elem ;
+      }
+      
       v_lk(l) = R::rbeta(a_lk, b_lk) ;
     }
      omega_lk.col(k-1) = stick_breaking( v_lk ) ;
   }
   
-  return Rcpp::List::create(Rcpp::Named("cluster") = clusterO,
+  // step 5: sample the distributional cluster indicator
+  NumericVector probK(maxK) ;
+  IntegerVector clusterD_id =  Rcpp::seq(1, maxK + 1);
+  for(int j = 0; j < J; j++)
+  {
+    for(int k = 0; k < maxK; k++)
+    {
+      probK[k] = 0 ;
+      if( u_D(j) < xi_D(k) )
+      {
+        arma::vec subomega = omega_lk.col(k) ;
+        arma::uvec ind_om = find(g == j) ;
+        subomega = subomega.elem(ind_om) ;
+        probK[k] = pi_k(k) / xi_D(k) * arma::prod(subomega) ;
+      }
+    }
+    clusterD(j) = Rcpp::sample(clusterD_id, 1, false, probK)[0] ;
+  }
+  
+  // step 6: sample the observational cluster indicator
+  NumericVector probL(maxL) ;
+  IntegerVector clusterO_id = Rcpp::seq(0, maxL) ;
+  for(int t = 0; t < T; t++)
+  {
+    for(int l = 0; l < maxL; l++)
+    {
+      probL[l] = 0 ;
+      if( u_O(t) < xi_O(l) )
+      {
+        probL[l] = omega_lk(l, clusterD(g(t)-1)) / xi_O(l) * R::dnorm(y(t) - b - gamma * cc(t), A(l), std::sqrt(sigma2 + tau2), false) ;
+      }
+    }
+    
+    clusterO(t) = Rcpp::sample(clusterO_id, 1, false, probL)[0] ;
+    if( A(clusterO(t)) == 0 ) { clusterO(t) = 0 ; }
+  }
+  
+  
+  // step 7: sample the cluster parameters
+  for(int l = 1; l < maxL; l++)
+  {
+    arma::uvec ind_l = find( clusterO == l ) ;
+    if( ind_l.n_elem > 0 )
+    {
+      arma::vec sub_y = y(ind_l) ;
+      // MH step su A(l)
+      oldA = A(l) ;
+      newA = oldA ;
+      
+      newA = oldA + R::runif(-eps_A, eps_A) ;
+      ratio = exp( logpost_A(sub_y, cc(ind_l), 
+                             newA, b, 
+                             gamma, sigma2, tau2,
+                             hyp_A1, hyp_A2) -
+                    logpost_A(sub_y, cc(ind_l), 
+                              oldA, b, 
+                              gamma, sigma2, tau2,
+                              hyp_A1, hyp_A2) ) ;
+      if(R::runif(0, 1) < ratio) oldA = newA ;
+      A(l) = oldA ; 
+    } else {
+      // sample from the prior
+      A(l) = sample_mix(p, hyp_A1, hyp_A2) ;
+    }
+  }
+      
+  return Rcpp::List::create(Rcpp::Named("clusterO") = clusterO,
                             Rcpp::Named("A") = A);
 }
 
@@ -271,7 +352,6 @@ Rcpp::List calcium_gibbs(int Nrep,
   double n_clus ;
   arma::vec AA = arma::zeros(n+1) ;
   Rcpp::List polyaurn ;
-  double oldA ; double newA ;
   
   cluster.col(0) = cl ;
   out_A.col(0) = A_start; 
@@ -376,34 +456,11 @@ Rcpp::List calcium_gibbs(int Nrep,
 //    arma::vec out_polya_A = polyaurn["A"] ;
     out_A.col(i+1) = out_polya_A ;
     
-    arma::vec line(n) ; line = cluster.col(i+1) ;
-    n_clus = line.max() ;
-    
-    for(int l = 1; l < n_clus + 1; l++)
-    {
-      // MH step su A(l)
-      oldA = out_A(l, i+1) ;
-      newA = oldA ;
-      
-      arma::uvec idk = find( line == l ) ;
-      arma::vec sub_y = y(idk) ;
-      arma::vec col_c = out_c.col(i+1) ;
-      
-      newA = oldA + R::runif(-eps_A, eps_A) ;
-      ratio = exp( logpost_A(sub_y, col_c(idk), 
-                             newA, out_b(i+1), 
-                             out_gamma(i+1), out_sigma2(i+1), out_tau2(i+1),
-                             hyp_A1, hyp_A2) -
-                    logpost_A(sub_y, col_c(idk), 
-                              oldA, out_b(i+1), 
-                              out_gamma(i+1), out_sigma2(i+1), out_tau2(i+1),
-                              hyp_A1, hyp_A2) ) ;
-      if(R::runif(0, 1) < ratio) oldA = newA ;
-      out_A(l, i+1) = oldA ;
-    }
-    
+
     // Update p
+    arma::vec line(n) ; line = cluster.col(i+1) ;
     double n0 = std::count(line.begin(), line.end(), 0) ;
+    
     out_p(i+1) = R::rbeta(hyp_p2 + n - n0, hyp_p1 + n0) ;
     //   out_p(i+1) = out_p(i) ;
     if(out_p(i+1) > 0.1) { check = 1 ; }
