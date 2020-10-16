@@ -92,7 +92,7 @@ double sample_mix(double & p, double & hyp_A1, double & hyp_A2)
  */
 
 // calcola coefficienti xi_D = (xi_1, xi_2, ...)
-arma::vec xi_D(double & kappa_D, int & max_xiK)
+arma::vec fun_xi_D(double & kappa_D, int & max_xiK)
 {
   arma::vec out(max_xiK);
   for(int k = 0; k < max_xiK; k++)
@@ -103,7 +103,7 @@ arma::vec xi_D(double & kappa_D, int & max_xiK)
 }
 
 // calcola coefficienti xi_O = (xi_1, xi_2, ...)
-arma::vec xi_O(double & kappa_O, int & max_xiL)
+arma::vec fun_xi_O(double & kappa_O, int & max_xiL)
 {
   arma::vec out(max_xiL);
   for(int l = 0; l < max_xiL; l++)
@@ -138,7 +138,7 @@ Rcpp::List slice_sampler(const arma::vec& y, const arma::vec& g,
                           arma::vec A, double b, double gamma, 
                           double p,
                           double sigma2, double tau2,
-                          double & alpha, 
+                          double & alpha, double & beta, 
                           double & hyp_A1, double & hyp_A2,  
                           double & kappa_D, double & kappa_O, // 0.5 per far sì che sia il valor medio
                           const arma::vec& xi_D, const arma::vec& xi_O, 
@@ -152,7 +152,7 @@ Rcpp::List slice_sampler(const arma::vec& y, const arma::vec& g,
    * xi_O = (xi^O_1, xi^O_2, ...)
    * xi_D = (xi^D_1, xi^D_2, ...)
    */
-  
+ 
   int T = y.n_elem ;
   arma::vec clusterD_long(T) ;
   for(int t = 0; t < T; t++) { clusterD_long(t) = clusterD(g(t)) ; }
@@ -219,7 +219,7 @@ Rcpp::List slice_sampler(const arma::vec& y, const arma::vec& g,
         arma::uvec ind_mlk = find(subcluster > l) ;
         
         a_lk = 1 + ind_lk.n_elem ;
-        b_lk = alpha + ind_mlk.n_elem ;
+        b_lk = beta + ind_mlk.n_elem ;
       }
       
       v_lk(l) = R::rbeta(a_lk, b_lk) ;
@@ -294,9 +294,9 @@ Rcpp::List slice_sampler(const arma::vec& y, const arma::vec& g,
   }
       
   return Rcpp::List::create(Rcpp::Named("clusterO") = clusterO,
+                            Rcpp::Named("clusterD") = clusterD,
                             Rcpp::Named("A") = A);
 }
-
 
 
 // Gibbs sampler: funzione principale
@@ -304,14 +304,17 @@ Rcpp::List slice_sampler(const arma::vec& y, const arma::vec& g,
 Rcpp::List calcium_gibbs(int Nrep, 
                          arma::vec y, arma::vec g,
                          arma::vec cal,
-                         arma::vec cl, 
+                         arma::vec clO, arma::vec clD, 
                          arma::vec A_start,
                          double b_start, double gamma_start, 
                          double sigma2_start, 
                          double tau2_start, // varianza su equazione del calcio
                          double p_start,
+                         double alpha, // concentration param DP on distributions
+                         double beta, // concentration param DP on observations
+                         int max_xiK, int max_xiL, // max length of deterministic sequences
+                         double kappa_D, double kappa_O, // parameters of the deterministic sequences
                          double c0, double varC0, // media e varianza c0 (calcio istante 0)
-                         double alpha, // concentration param DP
                          double hyp_A1, double hyp_A2, // shape e rate Gamma su A
                          double hyp_b1, double hyp_b2, // media e varianza Normale su b
                          double hyp_sigma21, double hyp_sigma22, // shape e rate Gamma su 1/sigma2 (precision)
@@ -323,16 +326,20 @@ Rcpp::List calcium_gibbs(int Nrep,
 {
   // allocate output matrices
   int n = y.n_elem ;
+  arma::vec unique_g = arma::unique(g) ;
+  int J = unique_g.n_elem ;
+  
   arma::mat out_c(n+1, Nrep) ; // 0 1 ... n
   arma::mat out_A = arma::zeros(A_start.n_elem, Nrep) ;
   arma::vec out_b(Nrep) ;
   arma::vec out_gamma = arma::zeros(Nrep) ;
   arma::vec out_sigma2 = arma::zeros(Nrep) ;
   arma::vec out_tau2 = arma::zeros(Nrep) ;
-  arma::mat cluster = arma::zeros(n, Nrep)  ;
+  arma::mat clusterO = arma::zeros(n, Nrep)  ;
+  arma::mat clusterD = arma::zeros(J, Nrep)  ;
   arma::vec out_p(Nrep) ;
   
-  // initialize the chain
+  // initialize the chains
   out_c(0,0) = c0 ;
   out_b(0) = b_start ;
   out_gamma(0) = gamma_start ;
@@ -340,22 +347,31 @@ Rcpp::List calcium_gibbs(int Nrep,
   out_tau2(0) = tau2_start ;
   out_p(0) = p_start ;
   
-  // other quantities
+  // init kalman filter quantities
+  out_c.col(0) = cal;
   arma::vec filter_mean(n+1) ; // 0 1 ... n
   arma::vec filter_var(n+1) ; // 0 1 ... n
   arma::vec R(n+1) ; arma::vec a(n+1) ; // 0 1 ... n
   double back_mean; double back_var ;
   
+  // MH quantities
   double oldgamma ; double newgamma ;
   double ratio ;
   
+  // CAM quantities
   double n_clus ;
   arma::vec AA = arma::zeros(n+1) ;
-  Rcpp::List polyaurn ;
+  Rcpp::List out_slice ;
   
-  cluster.col(0) = cl ;
+  clusterO.col(0) = clO ;
+  clusterD.col(0) = clD ;
   out_A.col(0) = A_start; 
-  out_c.col(0) = cal;
+  
+  arma::vec xi_D(max_xiK) ;
+  arma::vec xi_O(max_xiL) ;
+  xi_D = fun_xi_D(kappa_D, max_xiK) ;
+  xi_O = fun_xi_O(kappa_O, max_xiL) ;
+
   
   bool display_progress = true ;
   Progress p(Nrep, display_progress) ;
@@ -367,7 +383,7 @@ Rcpp::List calcium_gibbs(int Nrep,
     int check = 0 ;
     
     AA(0) = 0 ;
-    for(int j = 1; j < n+1; j++) { AA(j) =  out_A(cluster(j-1,i), i) ; }
+    for(int j = 1; j < n+1; j++) { AA(j) =  out_A(clusterO(j-1,i), i) ; }
     
     // sampling calcium: kalman filter
     a(0) = 0 ; // a0
@@ -392,34 +408,32 @@ Rcpp::List calcium_gibbs(int Nrep,
       
       out_c(j, i+1) = R::rnorm(back_mean, back_var) ;
     }
-    
-    //  out_c.col(i+1) = out_c.col(i) ;
+    // out_c.col(i+1) = out_c.col(i) ;
     
     
     
     // sampling b
-    
     arma::vec z(n) ; 
     for(int j = 0; j < n; j++) { z(j) = y(j) - out_c(j+1, i+1) ; } 
     
     out_b(i+1) = R::rnorm( (hyp_b2 * hyp_b1 + 1/out_sigma2(i) * arma::accu(z)) / (hyp_b2 + n / out_sigma2(i)) , 
           std::sqrt( 1/ (hyp_b2 + n / out_sigma2(i)) ) ) ;
-    //    out_b(i+1) = out_b(i) ;
+    // out_b(i+1) = out_b(i) ;
     
-    // sampling sigma2 
-    
+    // sampling sigma2
     arma::vec sq(n) ; 
     for(int j = 0; j < n; j++) { sq(j) = (z(j) - out_b(i+1)) * (z(j) - out_b(i+1)) ; }
     
     out_sigma2(i+1) = 1/ R::rgamma(hyp_sigma21 + n/2, 1/(hyp_sigma22 + 0.5 * arma::accu(sq)) ) ;
+    // out_sigma2(i+1) = out_sigma2(i) ;
     
-    //out_sigma2(i+1) = out_sigma2(i) ;
     
+    // sampling tau2
     arma::vec sq2(n) ; 
     for(int j = 0; j < n ; j++) { sq2(j) = (out_c(j+1,i+1) - out_gamma(i) * out_c(j,i+1) - AA(j+1)) * 
        (out_c(j+1,i+1) - out_gamma(i) * out_c(j,i+1) - AA(j+1)) ; }
     out_tau2(i+1) = 1/ R::rgamma(hyp_tau21 + n/2, 1/(hyp_tau22 + 0.5 * arma::accu(sq2)) ) ;
-    //   out_tau2(i+1) = out_tau2(i) ;
+    // out_tau2(i+1) = out_tau2(i) ;
     
     
     
@@ -440,25 +454,35 @@ Rcpp::List calcium_gibbs(int Nrep,
     
     // Sampling of clusters and cluster parameters
     // Polya-Urn
-/*    polyaurn = polya_urn(y, cluster.col(i), out_c.col(i+1),
-                          out_A.col(i), out_b(i+1), out_gamma(i+1), 
-                          out_p(i),
-                          out_sigma2(i+1), out_tau2(i+1),
-                          alpha,
-                          hyp_A1, hyp_A2, check) ; 
-    arma::vec out_polya_clus = polyaurn["cluster"] ;
-    cluster.col(i+1) = out_polya_clus ;
- */
-    cluster.col(i+1) = cluster.col(i) ;
+    /*
+    out_slice = slice_sampler(y, g, 
+                              clusterD.col(i), clusterO.col(i), 
+                              out_c.col(i+1),
+                              out_A.col(i), out_b(i+1), out_gamma(i+1), 
+                              out_p(i),
+                              out_sigma2(i+1), out_tau2(i+1),
+                              alpha, beta, 
+                              hyp_A1, hyp_A2,  
+                              kappa_D, kappa_O, 
+                              xi_D, xi_O, 
+                              eps_A,
+                              check) ;
+*/
+//    arma::vec out_slice_clusO = out_slice["clusterO"] ;
+ //   clusterO.col(i+1) = out_slice_clusO ;
+    clusterO.col(i+1) = clusterO.col(i) ;
     
-    // sampling of parameters A1,...,Ak
-    arma::vec out_polya_A =out_A.col(i) ;
-//    arma::vec out_polya_A = polyaurn["A"] ;
-    out_A.col(i+1) = out_polya_A ;
+//    arma::vec out_slice_clusD = out_slice["clusterD"] ;
+//    clusterD.col(i+1) = out_slice_clusD ;
+    clusterD.col(i+1) = clusterD.col(i) ;
     
+//    arma::vec out_slice_A = out_slice["A"] ;
+ //   out_A.col(i+1) = out_slice_A ;
+    out_A.col(i+1) = out_A.col(i) ;
+//    
 
     // Update p
-    arma::vec line(n) ; line = cluster.col(i+1) ;
+    arma::vec line(n) ; line = clusterO.col(i+1) ;
     double n0 = std::count(line.begin(), line.end(), 0) ;
     
     out_p(i+1) = R::rbeta(hyp_p2 + n - n0, hyp_p1 + n0) ;
@@ -477,10 +501,10 @@ Rcpp::List calcium_gibbs(int Nrep,
                             Rcpp::Named("b") = out_b,
                             Rcpp::Named("gamma") = out_gamma,
                             Rcpp::Named("sigma2") = out_sigma2,
-                            Rcpp::Named("cluster") = cluster,
+                            Rcpp::Named("clusterO") = clusterO,
+                            Rcpp::Named("clusterD") = clusterD,
                             Rcpp::Named("p") = out_p,
-                            Rcpp::Named("tau2") = out_tau2
-  );
+                            Rcpp::Named("tau2") = out_tau2);
 }
 
 
