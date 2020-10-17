@@ -3,7 +3,7 @@ library(RcppDist)
 library(ggplot2)
 library(viridis)
 # install.packages("RcppProgress")
-sourceCpp('calcium_CAM.cpp')
+sourceCpp('./SourceCPP/calcium_CAM.cpp')
 
 
 ## mixture ##
