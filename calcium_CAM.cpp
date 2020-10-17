@@ -270,7 +270,7 @@ Rcpp::List slice_sampler(const arma::vec& y, const arma::vec& g,
     clusterO(t) = Rcpp::sample(clusterO_id, 1, false, probL)[0] ;
     if( A(clusterO(t)) == 0 ) { clusterO(t) = 0 ; }
   }
- /* 
+  
   // step 7: sample the cluster parameters
   for(int l = 1; l < maxL; l++)
   {
@@ -298,7 +298,7 @@ Rcpp::List slice_sampler(const arma::vec& y, const arma::vec& g,
       A(l) = sample_mix(p, hyp_A1, hyp_A2) ;
     }
   }
-      */
+      
   return Rcpp::List::create(Rcpp::Named("clusterO") = clusterO,
                             Rcpp::Named("clusterD") = clusterD,
                             Rcpp::Named("A") = A);
@@ -473,7 +473,7 @@ Rcpp::List calcium_gibbs(int Nrep,
      * Sampling of clusters and cluster parameters
      * Slice sampler
      */
-/*    out_slice = slice_sampler(y, g, 
+    out_slice = slice_sampler(y, g, 
                               clusterD.col(i), clusterO.col(i), 
                               out_c.col(i+1),
                               out_A.col(i), out_b(i+1), out_gamma(i+1), 
@@ -484,19 +484,19 @@ Rcpp::List calcium_gibbs(int Nrep,
                               kappa_D, kappa_O, 
                               xi_D, xi_O, 
                               eps_A,
-                              check) ;*/
+                              check) ;
 
-//    arma::vec out_slice_clusO = out_slice["clusterO"] ;
- //   clusterO.col(i+1) = out_slice_clusO ;
-    clusterO.col(i+1) = clusterO.col(i) ;
+    arma::vec out_slice_clusO = out_slice["clusterO"] ;
+    clusterO.col(i+1) = out_slice_clusO ;
+    //clusterO.col(i+1) = clusterO.col(i) ;
     
-//    arma::vec out_slice_clusD = out_slice["clusterD"] ;
-//    clusterD.col(i+1) = out_slice_clusD ;
-    clusterD.col(i+1) = clusterD.col(i) ;
+    arma::vec out_slice_clusD = out_slice["clusterD"] ;
+    clusterD.col(i+1) = out_slice_clusD ;
+//    clusterD.col(i+1) = clusterD.col(i) ;
     
-//    arma::vec out_slice_A = out_slice["A"] ;
- //   out_A.col(i+1) = out_slice_A ;
-    out_A.col(i+1) = out_A.col(i) ;
+    arma::vec out_slice_A = out_slice["A"] ;
+    out_A.col(i+1) = out_slice_A ;
+ //   out_A.col(i+1) = out_A.col(i) ;
     
 
     /*
@@ -506,7 +506,7 @@ Rcpp::List calcium_gibbs(int Nrep,
     double n0 = std::count(line.begin(), line.end(), 0) ;
     
     out_p(i+1) = R::rbeta(hyp_p2 + n - n0, hyp_p1 + n0) ;
-    if(out_p(i+1) > 0.1) { check = 1 ; }
+    if(out_p(i+1) > 0.4) { check = 1 ; }
     //   out_p(i+1) = out_p(i) ;
 
     

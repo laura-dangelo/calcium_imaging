@@ -60,19 +60,19 @@ gamma = 0.6
 b = 0
 group1 <- sim_data(n = n1, sigma2 = sigma2, tau2 = tau2, time_spike = spp[spp<=n1],
                  gamma = gamma, b = b,
-                 prob = c(0.13, 0.5, 0.43), par = c(0.3, 0.41, 0.65))
+                 prob = c(0.13, 0.5, 0.43), par = c(0.41, 0.5, 0.75))
 
 group2 <- sim_data(n = n2, sigma2 = sigma2, tau2 = tau2, time_spike = spp[(spp>n1)&(spp<=(n1 + n2))] - n1,
                    gamma = gamma, b = b,
-                   prob = c(0.3, 0.43), par = c(0.3, 0.5))
+                   prob = c(0.3, 0.43), par = c(0.6, 0.8))
 
 group3 <- sim_data(n = n3, sigma2 = sigma2, tau2 = tau2, time_spike = spp[(spp>(n1 + n2))&(spp<=(n1 + n2 + n3))] - (n1 + n2),
                    gamma = gamma, b = b,
-                   prob = c(0.13, 0.5, 0.43), par = c(0.3, 0.41, 0.65))
+                   prob = c(0.13, 0.5, 0.43), par = c(0.41, 0.5, 0.75))
 
 group4 <- sim_data(n = n4, sigma2 = sigma2, tau2 = tau2, time_spike = spp[spp>(n1 + n2 + n3)] - (n1 + n2 + n3),
                    gamma = gamma, b = b,
-                   prob = c(0.42, 0.3, 0.2), par = c(0.23, 0.3, 0.8))
+                   prob = c(0.42, 0.3, 0.2), par = c(0.41, 0.75, 0.8))
 
 
 y = c(group1$y, group2$y, group3$y, group4$y)
@@ -80,7 +80,7 @@ g = c(rep(1,n1), rep(2,n2), rep(3,n3), rep(4,n4))
 plot(y, type = "l")
 
 A_start = rep(0,50)
-A_start[2:6] = c(0.23, 0.3, 0.41, 0.65, 0.8)
+A_start[2:6] = c(0.41,0.5,0.6,0.75,0.8)
 AA = c(group1$A, group2$A, group3$A, group4$A)
 
 cluster = rep(0, length(y))
@@ -90,8 +90,10 @@ cluster[AA == A_start[4]] = 3
 cluster[AA == A_start[5]] = 4
 cluster[AA == A_start[6]] = 5
 
+1-sum(cluster == 0)/length(y)
+
 n = length(y)
-nrep = 300
+nrep = 500
 set.seed(1234)
 
 run = calcium_gibbs(Nrep = nrep, 
@@ -103,33 +105,21 @@ run = calcium_gibbs(Nrep = nrep,
                     gamma_start = 0.6, 
                     sigma2_start = 0.002, 
                     tau2_start = 0.001, 
-                    p_start = 0.01, 
+                    p_start = 0.001, 
                     alpha = 1, beta = 1,
                     max_xiK = 100, max_xiL = 100,
                     kappa_D = 0.5, kappa_O = 0.5, 
                     c0 = 0, varC0 = 0.1, 
-                    hyp_A1 = 7, hyp_A2 = 14, 
+                    hyp_A1 = 10, hyp_A2 = 10, 
                     hyp_b1 = 0, hyp_b2 = 1, 
                     hyp_sigma21 = 1000, hyp_sigma22 = 1, 
                     hyp_tau21 = 1000, hyp_tau22 = 1, 
                     hyp_gamma1 = 1, hyp_gamma2 = 1,
-                    hyp_p1 = 1, hyp_p2 = 99,
+                    hyp_p1 = 1, hyp_p2 = 999,
                     eps_gamma = 0.01,
                     eps_A = 0.002)
 
 
-s = slice_sampler(y, g, 
-              clusterD = c(1,2,1,3), clusterO = cluster, 
-              c(0,y),
-              A_start, b = 0, gamma = 0.6, 
-              p = 0.95,
-              sigma2, tau2,
-              alpha = 1, beta = 1, 
-              hyp_A1 = 7, hyp_A2 = 10,  
-              kappa_D = 0.5, kappa_O = 0.5, 
-              xi_D = 0.5 * (0.5^c(0:100)), xi_O = 0.5 * (0.5^c(0:100)), 
-              eps_A = 0.3,
-              check = 0)
 
 # burnin = 1:500
 # run$calcium = run$calcium[,-burnin]
@@ -164,7 +154,13 @@ mean(run$tau2[-burnin])
 mean(run$b[-burnin])
 mean(run$gamma[-burnin])
 
+apply(run$A, 2, function(x) max(which(x>0)) )
+apply(run$A, 2, function(x) length(which(x>0)) )
+maxx = max(apply(run$A, 2, function(x) max(which(x>0)) ))
+t(run$A[1:maxx,100:120]) 
 
-run$A[1:10,1:20] #valori, iterazioni
 run$clusterO[377:387,1:10]
+run$clusterO[,150]
+colSums(run$clusterO>0)
 run$clusterD[,1:10]
+
