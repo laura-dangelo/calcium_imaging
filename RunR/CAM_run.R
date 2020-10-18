@@ -41,6 +41,10 @@ spp = c(# group 1
         3101,3104,
         3500,3502,3503,
         4000, 4004,
+        4100,4103,4105,4109,
+        4200,4201,
+        4220,4222,4226,
+        4400,4404,
         ### group 3
         4700, 4701, 4703,
         5500,
@@ -103,6 +107,7 @@ cluster[AA == A_start[5]] = 4
 1-sum(cluster == 0)/length(y)
 
 n = length(y)
+J = length(unique(g))
 nrep = 500
 set.seed(1234)
 
@@ -203,9 +208,31 @@ ggplot(data = dataa, aes(x = A)) +
 
 
 
+barplot(table(apply(run$clusterD, 2, function(x) length(unique(x)) ))) # quanti cluster di distribuzioni
 
-run$clusterO[377:387,1:10]
-run$clusterO[,150]
-colSums(run$clusterO>0)
-run$clusterD[,1:10]
+# analizzo il caso = 3
+mat_clusterD = matrix(NA, J, J)
+ind3 = which( apply(run$clusterD, 2, function(x) length(unique(x)) ) ==3 )
+mat_heatmap = expand.grid(J1 = c(1,2,3,4),
+                          J2 = c(1,2,3,4))
+for(i in 1:J)
+{
+  for(j in 1:J)
+  {
+    mat_clusterD[i,j] = sum( apply(run$clusterD[,ind3], 2, function(x) x[i] == x[j] ) )
+  }
+}
+df_heat = data.frame(J1 = as.factor(mat_heatmap[,1]),
+                     J2 = as.factor(mat_heatmap[,2]),
+                     val = c(mat_clusterD)/mat_clusterD[1,1],
+                     lab = round( c(mat_clusterD)/mat_clusterD[1,1] , 3) )
+df_heat$lab[df_heat$J1==df_heat$J2] = 1:4
+df_heat$val[df_heat$J1==df_heat$J2] = NA
+
+ggplot(data = df_heat) +
+  geom_tile( aes(x = J1, y = J2, fill = val)) +
+  geom_text(aes(x = J1, y = J2, label = lab), size=2.5) +
+  scale_fill_gradient(low = magma(3)[3], high = inferno(3)[2]) +
+  ylim(rev(levels(df_heat$J2))) 
+
 
