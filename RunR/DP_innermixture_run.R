@@ -60,7 +60,7 @@ n = length(y2)
 cluster = rep(0,length(y2))
 #  cluster[data2$s == 1] = data2$k
 
-nrep = 900
+nrep = 1500
 set.seed(1234)
 
 run = calcium_gibbs(Nrep = nrep, y = y2, 
