@@ -2,7 +2,7 @@ library(Rcpp)
 library(RcppDist)
 library(ggplot2)
 library(viridis)
-# install.packages("RcppProgress")
+
 sourceCpp('./SourceCPP/calcium_CAM.cpp')
 
 
@@ -26,7 +26,8 @@ sim_data <- function(n, sigma2, tau2, time_spike, b, gamma, prob, par)
 
 
 
-spp = c(380,385,
+spp = c(# group 1
+        380,385,
         500,553,
         985,
         1000, 1001, 1003, 1004, 1005, 1007, 
@@ -34,20 +35,27 @@ spp = c(380,385,
         1021, 1022, 1024,
         1100, 1820, 1825,
         2800, 
-        2990, 2991, 2993, 2995, 2999, 3001, 3002,
+        2990, 2991, 2993, 2995, 2999, 
+        ### group 2
+        3001, 3002,
         3101,3104,
         3500,3502,3503,
         4000, 4004,
+        ### group 3
         4700, 4701, 4703,
         5500,
         6000,6003,
         6233, 
         6250,
         7100,7120,
+        ### group4
+        7550, 7551, 7553, 7555,
         7700, 7703,
+        8004,8006,
         8700,
         8800, 8802, 8803, 8804,
-        9200, 9300, 9340)
+        9200, 9300, 9340,
+        9500,9510,9512, 9514)
 
 set.seed(1234)
 sigma2 = 0.004
@@ -56,23 +64,25 @@ n1 = 3000
 n2 = 1500
 n3 = 3000
 n4 = 2500
+
 gamma = 0.6
 b = 0
+
 group1 <- sim_data(n = n1, sigma2 = sigma2, tau2 = tau2, time_spike = spp[spp<=n1],
                  gamma = gamma, b = b,
-                 prob = c(0.13, 0.5, 0.43), par = c(0.41, 0.5, 0.75))
+                 prob = c(0.5, 0.35, 0.15), par = c(0.5, 0.7, 0.9))
 
 group2 <- sim_data(n = n2, sigma2 = sigma2, tau2 = tau2, time_spike = spp[(spp>n1)&(spp<=(n1 + n2))] - n1,
                    gamma = gamma, b = b,
-                   prob = c(0.3, 0.43), par = c(0.6, 0.8))
+                   prob = c(0.7, 0.3), par = c(0.7, 0.9))
 
 group3 <- sim_data(n = n3, sigma2 = sigma2, tau2 = tau2, time_spike = spp[(spp>(n1 + n2))&(spp<=(n1 + n2 + n3))] - (n1 + n2),
                    gamma = gamma, b = b,
-                   prob = c(0.13, 0.5, 0.43), par = c(0.41, 0.5, 0.75))
+                   prob = c(0.3, 0.3, 0.4), par = c(0.7, 0.9, 1.1))
 
 group4 <- sim_data(n = n4, sigma2 = sigma2, tau2 = tau2, time_spike = spp[spp>(n1 + n2 + n3)] - (n1 + n2 + n3),
                    gamma = gamma, b = b,
-                   prob = c(0.42, 0.3, 0.2), par = c(0.41, 0.75, 0.8))
+                   prob = c(0.5, 0.35, 0.15), par = c(0.5, 0.7, 0.9))
 
 
 y = c(group1$y, group2$y, group3$y, group4$y)
@@ -80,7 +90,7 @@ g = c(rep(1,n1), rep(2,n2), rep(3,n3), rep(4,n4))
 plot(y, type = "l")
 
 A_start = rep(0,50)
-A_start[2:6] = c(0.41,0.5,0.6,0.75,0.8)
+A_start[2:5] = c(0.5, 0.7, 0.9, 1.1)
 AA = c(group1$A, group2$A, group3$A, group4$A)
 
 cluster = rep(0, length(y))
@@ -88,7 +98,7 @@ cluster[AA == A_start[2]] = 1
 cluster[AA == A_start[3]] = 2
 cluster[AA == A_start[4]] = 3
 cluster[AA == A_start[5]] = 4
-cluster[AA == A_start[6]] = 5
+
 
 1-sum(cluster == 0)/length(y)
 
@@ -154,10 +164,45 @@ mean(run$tau2[-burnin])
 mean(run$b[-burnin])
 mean(run$gamma[-burnin])
 
-apply(run$A, 2, function(x) max(which(x>0)) )
-apply(run$A, 2, function(x) length(which(x>0)) )
-maxx = max(apply(run$A, 2, function(x) max(which(x>0)) ))
-t(run$A[1:maxx,100:120]) 
+#apply(run$A, 2, function(x) max(which(x>0)) ) # massima componente occupata del cluster sulle osservazioni
+table(apply(run$A, 2, function(x) max(which(x>0)) ) )
+
+
+#apply(run$A, 2, function(x) length(which(x>0)) ) # numero di clusters
+barplot(table(apply(run$A, 2, function(x) length(which(x>0))+1 )))
+
+#maxx = max(apply(run$A, 2, function(x) max(which(x>0)) ))
+#t(run$A[1:maxx,100:120]) 
+
+AA = matrix(0,length(run$b[-burnin]),n)
+for(i in 1:length(run$b[-burnin]))
+{
+  ii = i + max(burnin)
+  AA[i, t(run$clusterO)[ii,] >0] = run$A[run$clusterO[run$clusterO[,ii] >0,ii]+1,ii]
+}
+est_spikes = colMeans(AA) 
+est_spikes[which( apply(t(run$clusterO)[-burnin,], 2, function(x) mean(x != 0))<0.8)] = 0
+times = which(est_spikes>0)
+
+times
+spp
+
+sum(sapply(spp, function(x) !(x %in% times))) / length(spp)  ### spikes non identificati falsi negativi
+sum(sapply(times, function(x) !(x %in% spp))) / (n-length(spp)) ### falsi positivi
+
+AA[,which(est_spikes == 0)] = 0
+barplot(table( apply(AA, 1, function(x) length(unique(x))) ))
+
+A5 = AA[apply(AA, 1, function(x) length(unique( x )))==5,]
+dataa = data.frame(A = A5[A5>0])
+ggplot(data = dataa, aes(x = A)) + 
+  geom_histogram(bins = 35, aes(y = ..density..), col = "#00AFBB", fill = "#00AFBB", alpha = 0.3) +   
+  stat_density(aes(y = ..density..), fill = 1, alpha = 0, col = 1) + 
+  theme_bw() +
+  scale_x_continuous(limits = c(0.3,1.4))
+
+
+
 
 run$clusterO[377:387,1:10]
 run$clusterO[,150]
