@@ -2,9 +2,7 @@ library(Rcpp)
 library(RcppDist)
 library(ggplot2)
 library(viridis)
-# install.packages("RcppProgress")
-sourceCpp('calcium_DP_innermixture.cpp')
-sourceCpp('calcium_DP_mixture_nonconjugate_2708.cpp')
+sourceCpp('./SourceCPP/calcium_DP_innermixture.cpp')
 
 ## mixture ##
 sim_data <- function(n, sigma2, tau2, time_spike, b, gamma, prob, par)
@@ -49,7 +47,7 @@ spp = c(380,385,
 set.seed(1234)
 data2 <- sim_data(n = 10000, sigma2 = 0.004, tau2 = 0.00002, time_spike = spp,
                  gamma = 0.6, b = 0,
-                 prob = c(0.43, 0.3, 0.13), par = c(0.3, 0.41, 0.65))
+                 prob = c(0.5, 0.3, 0.2), par = c(0.3, 0.5, 0.8))
 
 y2 = data2$y
 plot(y2, type = "l")
@@ -74,7 +72,7 @@ run = calcium_gibbs(Nrep = nrep, y = y2,
                             p_start = 0.01, 
                             c0 = 0, varC0 = 0.1, 
                             alpha = 1, m = 1,
-                            hyp_A1 = 7, hyp_A2 = 14, 
+                            hyp_A1 = 7, hyp_A2 = 10, 
                             hyp_b1 = 0, hyp_b2 = 1, 
                             hyp_sigma21 = 1000, hyp_sigma22 = 1, 
                             hyp_tau21 = 1000, hyp_tau22 = 1, 
@@ -93,7 +91,7 @@ run = calcium_gibbs(Nrep = nrep, y = y2,
 # run$tau2 = run$tau2[-burnin]
 # run$A = run$A[,-burnin]
 # run$p = run$p[-burnin]
-# save(run, file = "res_sim_1709_par4_low.Rdata")
+# save(run, file = "res_inner_181020.Rdata")
 
 burnin = 1:500
 plot(1:length(run$p[-burnin]), run$p[-burnin], type = "l")
@@ -140,30 +138,30 @@ ggplot(data = data.frame(x = rep(int,2),
 
 
 
-AA = matrix(0,100,n)
-for(i in 1:100)
+AA = matrix(0, length(run$b[-burnin]), n)
+for(i in 1:length(run$b[-burnin]))
 {
   ii = i 
   AA[i, t(run$clus)[ii,] >0] = run$A[run$clus[run$clus[,ii] >0,ii]+1,ii]
 }
 
-est_spikes1 = colMeans(AA) ## run
-est_spikes1[which( apply(t(run$clus)[-burnin,], 2, function(x) mean(x != 0))<0.8)] = 0
-times1 = which(est_spikes1>0)
+est_spikes = colMeans(AA) ## run
+est_spikes[which( apply(t(run$clus)[-burnin,], 2, function(x) mean(x != 0))<0.8)] = 0
+times = which(est_spikes>0)
 
-times1
+times
 spp
 
-sum( est_spikes1>0)
+sum( est_spikes>0 )
 length(spp)
 
-sum(sapply(spp, function(x) !(x %in% times1))) / length(spp)  ### spikes non identificati falsi negativi
-sum(sapply(times1, function(x) !(x %in% spp))) / (n-length(spp)) ### falsi positivi
+sum(sapply(spp, function(x) !(x %in% times))) / length(spp)  ### spikes non identificati falsi negativi
+sum(sapply(times, function(x) !(x %in% spp))) / (n-length(spp)) ### falsi positivi
 
 
 
 
-
+# grafico se fai simulazioni con diversi valori del parametro
 # int = 4600:4800
 # ggplot(data = data.frame(x = rep(int,2), 
 #                          y = c( y2[int], rowMeans(run$calcium[,-burnin])[-1][int] ), 
@@ -200,26 +198,25 @@ sum(sapply(times1, function(x) !(x %in% spp))) / (n-length(spp)) ### falsi posit
 
 hist(apply(run$clus[,-burnin], 1, function(x) mean(x != 0)), main = "Distr. of spike probabilities")
 
-
-A3 = AA[apply(AA, 1, function(x) length(unique( x[x!=0] )))==3,]
-dataa = data.frame(A = A3[A3>0])
-ggplot(data = dataa, aes(x = A)) + 
-  geom_histogram(bins = 35, aes(y = ..density..), col = "#00AFBB", fill = "#00AFBB", alpha = 0.3) +   
-  stat_density(aes(y = ..density..), fill = 1, alpha = 0, col = 1) + 
-  theme_bw() +
-  scale_x_continuous(limits = c(0.15,0.8))
-
-
 ### number of clusters
 plot(1:(nrep-max(burnin)), apply(run$cluster[,-burnin], 2, function(x) length(unique(x[x>0]))), pch=19, cex=0.2)
-table(apply(run$cluster[,-burnin], 2, function(x) length(unique(x[x>0]))))/1500
+barplot(table(apply(run$cluster[,-burnin], 2, function(x) length(unique(x[x>0])))))
+
+
+A3 = AA[apply(AA, 1, function(x) length(unique( x[x!=0] )))==3,]
+dataa = data.frame(A = c(A3[c(A3)>0]) )
+ggplot(data = dataa, aes(x = A)) + 
+  geom_histogram(aes(y = ..density..), col = "#00AFBB", fill = "#00AFBB", alpha = 0.3) +   
+  stat_density(aes(y = ..density..), fill = 1, alpha = 0, col = 1) + 
+  theme_bw() +
+  scale_x_continuous(limits = c(0.1,0.99))
+
 
 
 ### cluster parameter
 minA = min( which(apply(run$A[-1,-burnin], 1, function(x) sum(x == 0)) == nrep-(max(burnin))) )
 minA -1
 run$A = run$A[1:(minA +1),]
-str(run$A)
 
 out_A = t(run$A)
 out_A[400:500,1:(minA)]
