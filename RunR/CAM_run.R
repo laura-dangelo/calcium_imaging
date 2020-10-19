@@ -46,10 +46,11 @@ spp = c(# group 1
         4220,4222,4226,
         4400,4404,
         ### group 3
+        4501,4502,4506,
         4700, 4701, 4703,
         5500,
         6000,6003,
-        6233, 
+        6233, 6236, 6240,
         6250,
         7100,7120,
         ### group4
@@ -63,7 +64,7 @@ spp = c(# group 1
 
 set.seed(1234)
 sigma2 = 0.004
-tau2 = 0.00002
+tau2 = 0.00001
 n1 = 3000
 n2 = 1500
 n3 = 3000
@@ -74,7 +75,7 @@ b = 0
 
 group1 <- sim_data(n = n1, sigma2 = sigma2, tau2 = tau2, time_spike = spp[spp<=n1],
                  gamma = gamma, b = b,
-                 prob = c(0.5, 0.35, 0.15), par = c(0.5, 0.7, 0.9))
+                 prob = c(0.5, 0.35, 0.15), par = c(0.5, 0.9, 1.4))
 
 group2 <- sim_data(n = n2, sigma2 = sigma2, tau2 = tau2, time_spike = spp[(spp>n1)&(spp<=(n1 + n2))] - n1,
                    gamma = gamma, b = b,
@@ -82,11 +83,11 @@ group2 <- sim_data(n = n2, sigma2 = sigma2, tau2 = tau2, time_spike = spp[(spp>n
 
 group3 <- sim_data(n = n3, sigma2 = sigma2, tau2 = tau2, time_spike = spp[(spp>(n1 + n2))&(spp<=(n1 + n2 + n3))] - (n1 + n2),
                    gamma = gamma, b = b,
-                   prob = c(0.3, 0.3, 0.4), par = c(0.7, 0.9, 1.1))
+                   prob = c(0.3, 0.2, 0.5), par = c(0.7, 0.9, 1))
 
 group4 <- sim_data(n = n4, sigma2 = sigma2, tau2 = tau2, time_spike = spp[spp>(n1 + n2 + n3)] - (n1 + n2 + n3),
                    gamma = gamma, b = b,
-                   prob = c(0.5, 0.35, 0.15), par = c(0.5, 0.7, 0.9))
+                   prob = c(0.5, 0.35, 0.15), par = c(0.5, 0.9, 1.4))
 
 
 y = c(group1$y, group2$y, group3$y, group4$y)
@@ -94,7 +95,7 @@ g = c(rep(1,n1), rep(2,n2), rep(3,n3), rep(4,n4))
 plot(y, type = "l")
 
 A_start = rep(0,50)
-A_start[2:5] = c(0.5, 0.7, 0.9, 1.1)
+A_start[2:7] = c(0.5, 0.7, 0.9, 1, 1.4)
 AA = c(group1$A, group2$A, group3$A, group4$A)
 
 cluster = rep(0, length(y))
@@ -102,6 +103,7 @@ cluster[AA == A_start[2]] = 1
 cluster[AA == A_start[3]] = 2
 cluster[AA == A_start[4]] = 3
 cluster[AA == A_start[5]] = 4
+cluster[AA == A_start[6]] = 5
 
 
 1-sum(cluster == 0)/length(y)
@@ -118,14 +120,14 @@ run = calcium_gibbs(Nrep = nrep,
                     A_start = A_start,
                     b_start = 0,
                     gamma_start = 0.6, 
-                    sigma2_start = 0.002, 
-                    tau2_start = 0.001, 
+                    sigma2_start = 0.004, 
+                    tau2_start = 0.00001, 
                     p_start = 0.001, 
                     alpha = 1, beta = 1,
                     max_xiK = 100, max_xiL = 100,
                     kappa_D = 0.5, kappa_O = 0.5, 
                     c0 = 0, varC0 = 0.1, 
-                    hyp_A1 = 10, hyp_A2 = 10, 
+                    hyp_A1 = 15, hyp_A2 = 15, 
                     hyp_b1 = 0, hyp_b2 = 1, 
                     hyp_sigma21 = 1000, hyp_sigma22 = 1, 
                     hyp_tau21 = 1000, hyp_tau22 = 1, 
@@ -173,7 +175,7 @@ mean(run$gamma[-burnin])
 table(apply(run$A, 2, function(x) max(which(x>0)) ) )
 
 
-#apply(run$A, 2, function(x) length(which(x>0)) ) # numero di clusters
+#apply(run$A, 2, function(x) length(which(x>0)) ) # numero di clusters sulle osservazioni
 barplot(table(apply(run$A, 2, function(x) length(which(x>0))+1 )))
 
 #maxx = max(apply(run$A, 2, function(x) max(which(x>0)) ))
@@ -210,16 +212,17 @@ ggplot(data = dataa, aes(x = A)) +
 
 barplot(table(apply(run$clusterD, 2, function(x) length(unique(x)) ))) # quanti cluster di distribuzioni
 
-# analizzo il caso = 3
+# analizzo il caso = 2
 mat_clusterD = matrix(NA, J, J)
-ind3 = which( apply(run$clusterD, 2, function(x) length(unique(x)) ) ==3 )
+ind3 = which( apply(run$clusterD, 2, function(x) length(unique(x)) ) ==2 )
 mat_heatmap = expand.grid(J1 = c(1,2,3,4),
                           J2 = c(1,2,3,4))
 for(i in 1:J)
 {
-  for(j in 1:J)
+  for(j in 1:i)
   {
     mat_clusterD[i,j] = sum( apply(run$clusterD[,ind3], 2, function(x) x[i] == x[j] ) )
+    mat_clusterD[j,i] = mat_clusterD[i,j] 
   }
 }
 df_heat = data.frame(J1 = as.factor(mat_heatmap[,1]),
@@ -234,5 +237,34 @@ ggplot(data = df_heat) +
   geom_text(aes(x = J1, y = J2, label = lab), size=2.5) +
   scale_fill_gradient(low = magma(3)[3], high = inferno(3)[2]) +
   ylim(rev(levels(df_heat$J2))) 
+
+
+# analizzo il caso = 3
+mat_clusterD = matrix(NA, J, J)
+ind3 = which( apply(run$clusterD, 2, function(x) length(unique(x)) ) ==3 )
+mat_heatmap = expand.grid(J1 = c(1,2,3,4),
+                          J2 = c(1,2,3,4))
+for(i in 1:J)
+{
+  for(j in 1:i)
+  {
+    mat_clusterD[i,j] = sum( apply(run$clusterD[,ind3], 2, function(x) x[i] == x[j] ) )
+    mat_clusterD[j,i] = mat_clusterD[i,j] 
+  }
+}
+df_heat = data.frame(J1 = as.factor(mat_heatmap[,1]),
+                     J2 = as.factor(mat_heatmap[,2]),
+                     val = c(mat_clusterD)/mat_clusterD[1,1],
+                     lab = round( c(mat_clusterD)/mat_clusterD[1,1] , 3) )
+df_heat$lab[df_heat$J1==df_heat$J2] = 1:4
+df_heat$val[df_heat$J1==df_heat$J2] = NA
+
+ggplot(data = df_heat) +
+  geom_tile( aes(x = J1, y = J2, fill = val)) +
+  geom_text(aes(x = J1, y = J2, label = lab), size=2.5) +
+  scale_fill_gradient(low = magma(3)[3], high = inferno(3)[2]) +
+  ylim(rev(levels(df_heat$J2))) 
+
+
 
 
