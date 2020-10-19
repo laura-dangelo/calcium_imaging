@@ -1,8 +1,8 @@
 library(Rcpp)
 library(RcppDist)
-sourceCpp('calcium_DP_mixture_nonconjugate_2708.cpp')
+sourceCpp('./SourceCPP/calcium_DP_innermixture.cpp')
 
-data <- read.csv("data/cellula2.csv", header = FALSE)
+data <- read.csv("../data/cellula2.csv", header = FALSE)
 
 
 y_real = c(data$V1)
@@ -13,7 +13,7 @@ plot(1:length(y_real), y_real, type = "l")
 str(y_real)
 
 n = length(y_real)
-nrep = 500
+nrep = 50
 
 
 out = list()
@@ -25,12 +25,11 @@ out$b = 0
 out$gamma = 0.5
 out$sigma2 = 0.001
 out$tau2 = 0.0003
-out$p = 0.9
+out$p = 0.001
 
-plot(function(x) dgamma(x, 12, 7), 0, 5)
 
 start <- Sys.time()
-debug = calcium_gibbs(Nrep = nrep, y = y_real,
+run = calcium_gibbs(Nrep = nrep, y = y_real,
                       cal = c(out$calcium[,length(out$b)]),
                       cl = c(out$cluster[,length(out$b)]),
                       A_start = c(out$A[,length(out$b)]),
@@ -40,27 +39,28 @@ debug = calcium_gibbs(Nrep = nrep, y = y_real,
                       tau2_start = c(out$tau2[length(out$b)]),
                       p_start = c(out$p[length(out$b)]),
                       c0 = 0, varC0 = 0.1,
-                      alpha = 1, m = 5,
-                      hyp_A1 = 12, hyp_A2 = 7,
+                      alpha = 1, m = 1,
+                      hyp_A1 = 7, hyp_A2 = 10,
                       hyp_b1 = 0, hyp_b2 = 1,
                       hyp_sigma21 = 1000, hyp_sigma22 = 1,
                       hyp_tau21 = 1000, hyp_tau22 = 1,
                       hyp_gamma1 = 1, hyp_gamma2 = 1,
-                      hyp_p1 = 99, hyp_p2 = 1,
+                      hyp_p1 = 1, hyp_p2 = 999,
                       eps_gamma = 0.003,
                       eps_A = 0.0009)
 end <- Sys.time()
 end - start
 
+str(run)
 
-out$calcium = cbind(out$calcium, debug$calcium)
-out$cluster = cbind(out$cluster, debug$cluster)
-out$b = c(out$b, debug$b)
-out$gamma = c(out$gamma, debug$gamma)
-out$sigma2 = c(out$sigma2, debug$sigma2)
-out$tau2 = c(out$tau2, debug$tau2)
-out$A = cbind(out$A, debug$A)
-out$p = c(out$p, debug$p)
+out$calcium = cbind(out$calcium, run$calcium)
+out$cluster = cbind(out$cluster, run$cluster)
+out$b = c(out$b, run$b)
+out$gamma = c(out$gamma, run$gamma)
+out$sigma2 = c(out$sigma2, run$sigma2)
+out$tau2 = c(out$tau2, run$tau2)
+out$A = cbind(out$A, run$A)
+out$p = c(out$p, run$p)
 
 # burnin = 1:400
 # out$calcium = out$calcium[,-burnin]
@@ -73,9 +73,9 @@ out$p = c(out$p, debug$p)
 # out$p = out$p[-burnin]
 
 
-# save(out, file = "out_1109.Rdata")
+# save(out, file = "res_realdata_181020.Rdata")
 
-burnin = c(1:100)
+burnin = 1
 
 plot(1:length(out$p[-burnin]), out$p[-burnin], type = "l", xlab = "iterazioni", ylab = "p")
 lines(1:length(out$p[-burnin]), cumsum(out$p[-burnin])/1:length(out$p[-burnin]), col =2)
