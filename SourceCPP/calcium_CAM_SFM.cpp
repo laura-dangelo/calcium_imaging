@@ -221,7 +221,7 @@ Rcpp::List slice_sampler(const arma::vec& y, const arma::vec& g,
     for(int l = 0; l < maxL - 1; l++)
     {
       double a_lk = beta ;
-      double b_lk = beta * (maxL - l + 1);
+      double b_lk = beta * (maxL - l - 1);
       
       if( subcluster.n_elem > 0 )
       {

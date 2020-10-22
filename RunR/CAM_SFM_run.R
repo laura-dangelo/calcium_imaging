@@ -95,7 +95,7 @@ y = c(group1$y, group2$y, group3$y, group4$y, group5$y)
 g = c(rep(1,n1), rep(2,n2), rep(3,n3), rep(4,n4), rep(5,n5))
 plot(y, type = "l")
 
-A_start = rep(0,50)
+A_start = rep(0,100)
 # A_start[2:7] = c(0.5, 0.7, 0.9, 1, 1.4)
 # AA = c(group1$A, group2$A, group3$A, group4$A)
 
@@ -128,7 +128,7 @@ run = calcium_gibbs(Nrep = nrep,
                     max_xiK = 100, 
                     kappa_D = 0.5, 
                     c0 = 0, varC0 = 0.1, 
-                    hyp_A1 = 10, hyp_A2 = 7, 
+                    hyp_A1 = 10, hyp_A2 = 10, 
                     hyp_b1 = 0, hyp_b2 = 1, 
                     hyp_sigma21 = 1000, hyp_sigma22 = 1, 
                     hyp_tau21 = 1000, hyp_tau22 = 1, 
@@ -169,7 +169,7 @@ lines(1:length(run$b[-burnin]), cumsum(run$b[-burnin])/1:length(run$b[-burnin]),
 plot(1:length(run$gamma[-burnin]), run$gamma[-burnin], type = "l", xlab = "iterazioni", ylab = "gamma")
 lines(1:length(run$gamma[-burnin]), cumsum(run$gamma[-burnin])/1:length(run$gamma[-burnin]), col =2)
 
-plot(1:length(run$beta[-burnin]), run$beta[-burnin], type = "l", xlab = "iterazioni", ylab = "gamma")
+plot(1:length(run$beta[-burnin]), run$beta[-burnin], type = "l", xlab = "iterazioni", ylab = "beta")
 lines(1:length(run$beta[-burnin]), cumsum(run$beta[-burnin])/1:length(run$beta[-burnin]), col =2)
 
 
@@ -210,7 +210,7 @@ sum(sapply(times, function(x) !(x %in% spp))) / (n-length(spp)) ### falsi positi
 AA[,which(est_spikes == 0)] = 0
 barplot(table( apply(AA, 1, function(x) length(unique(x))) ))
 
-A_ind = AA[apply(AA, 1, function(x) length(unique( x )))==7,]
+A_ind = AA[apply(AA, 1, function(x) length(unique( x )))==6,]
 dataa = data.frame(A = A_ind[A_ind>0])
 ggplot(data = dataa, aes(x = A)) + 
   geom_histogram(bins = 35, aes(y = ..density..), col = "#00AFBB", fill = "#00AFBB", alpha = 0.3) +   
