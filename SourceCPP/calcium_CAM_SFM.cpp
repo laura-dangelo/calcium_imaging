@@ -117,6 +117,38 @@ arma::vec stick_breaking(arma::vec beta_var)
   return(out) ;
 }
 
+double loglik_beta(double & beta,
+                   double & T,
+                   double & maxL,
+                   arma::vec& clusO_size,
+                   double & n_clusO)
+{
+  double out ;
+  arma::vec tmp(maxL) ;
+  tmp.fill(0) ;
+  for(l = 0; l < maxL; l++ )
+  {
+    if( clusO_size(l) > 0 )
+    {
+      tmp(l) = Rcpp::lgamma( clusO_size(l) + beta ) - Rcpp::lgamma( beta ) ;
+    }
+  }
+  out = Rcpp::lfactorial( maxL ) - Rcpp::lfactorial( maxL - n_clusO ) + Rcpp::lgamma( maxL*beta ) - 
+    Rcpp::lgamma( T + maxL*beta ) + arma::accu(tmp) ;
+  return(out) ;
+}
+
+double logpost_beta(double & beta, 
+                    double & hyp_beta1, double & hyp_beta2,
+                    double & eps_beta,
+                    double & T,
+                    double & maxL,
+                    arma::vec& clusO_size,
+                    double & n_clusO)
+{
+  double out;
+  
+}
 
 
 /*
@@ -130,6 +162,7 @@ Rcpp::List slice_sampler(const arma::vec& y, const arma::vec& g,
                           double p,
                           double sigma2, double tau2,
                           double & alpha, double & beta, 
+                          double & hyp_beta1, double & hyp_beta2, double & eps_beta, 
                           double & hyp_A1, double & hyp_A2,  
                           double & kappa_D, // 0.5 per far sì che sia il valor medio
                           const arma::vec& xi_D, 
@@ -253,9 +286,13 @@ Rcpp::List slice_sampler(const arma::vec& y, const arma::vec& g,
   }
   
   // step 7: sample the cluster parameters
+  arma::vec clusO_size(maxL) ;
+  
   for(int l = 1; l < maxL; l++)
   {
     arma::uvec ind_l = find( clusterO == l ) ;
+    clusO_size(l) = ind_l.n_elem ;
+    
     if( ind_l.n_elem > 0 )
     {
       arma::vec sub_y = y(ind_l) ;
@@ -280,11 +317,31 @@ Rcpp::List slice_sampler(const arma::vec& y, const arma::vec& g,
     }
   }
   
-  // step 8: update hyperparameter on Dirichlet distr for finite mixture    
+  // step 8: update hyperparameter on Dirichlet distr for finite mixture  
+  // MH step su beta
+  clusO_size(0) = T - arma::accu(clusO_size) ;
+  arma::uvec ind_cl = find( clusO_size > 0 ) ;
+  double n_clusO = ind_cl.n_elem ;
+  
+  oldbeta = beta ;
+  newbeta = beta ;
+      
+  newbeta = oldbeta + R::runif(-eps_beta, eps_beta) ;
+  ratio = exp( logpost_beta(sub_y, cc(ind_l), 
+                           newA, b, 
+                           gamma, sigma2, tau2,
+                           hyp_A1, hyp_A2) -
+                logpost_beta(sub_y, cc(ind_l), 
+                           oldA, b, 
+                           gamma, sigma2, tau2,
+                           hyp_A1, hyp_A2) ) ;
+  if(R::runif(0, 1) < ratio) oldbeta = newbeta ;
+  beta = oldbeta ; 
       
   return Rcpp::List::create(Rcpp::Named("clusterO") = clusterO,
                             Rcpp::Named("clusterD") = clusterD,
-                            Rcpp::Named("A") = A);
+                            Rcpp::Named("A") = A,
+                            Rcpp::Named("beta") = beta);
 }
 
 
@@ -310,6 +367,8 @@ Rcpp::List calcium_gibbs(int Nrep,
                          double hyp_tau21, double hyp_tau22, // shape e rate Gamma su 1/tau2 (precision state equation)
                          double hyp_gamma1, double hyp_gamma2, // shape1 e shape2 Beta su gamma (parametro AR)
                          double hyp_p1, double hyp_p2, // shape1 e shape2 Beta su p (prob di spike)
+                         double hyp_beta1, double hyp_beta2, 
+                         double eps_beta, 
                          double eps_gamma, // MH step size
                          double eps_A) 
 {
@@ -327,6 +386,7 @@ Rcpp::List calcium_gibbs(int Nrep,
   arma::mat clusterO = arma::zeros(n, Nrep)  ;
   arma::mat clusterD = arma::zeros(J, Nrep)  ;
   arma::vec out_p(Nrep) ;
+  arma::vec out_beta(Nrep) ;
   
   // initialize the chains
   out_c(0,0) = c0 ;
@@ -335,6 +395,7 @@ Rcpp::List calcium_gibbs(int Nrep,
   out_sigma2(0) = sigma2_start ;
   out_tau2(0) = tau2_start ;
   out_p(0) = p_start ;
+  out_beta(0) = beta_start ;
   
   // init kalman filter quantities
   out_c.col(0) = cal;
@@ -460,7 +521,8 @@ Rcpp::List calcium_gibbs(int Nrep,
                               out_A.col(i), out_b(i+1), out_gamma(i+1), 
                               out_p(i),
                               out_sigma2(i+1), out_tau2(i+1),
-                              alpha, beta, 
+                              alpha, out_beta(i), 
+                              hyp_beta1, hyp_beta2, eps_beta, 
                               hyp_A1, hyp_A2,  
                               kappa_D, xi_D,  
                               eps_A,
@@ -477,7 +539,9 @@ Rcpp::List calcium_gibbs(int Nrep,
     arma::vec out_slice_A = out_slice["A"] ;
     out_A.col(i+1) = out_slice_A ;
  //   out_A.col(i+1) = out_A.col(i) ;
-    
+ 
+    double out_slice_beta = out_slice["beta"] ;
+    out_beta(i+1) = out_slice_beta ;
 
     /*
      * Sampling p (spike and slab proportion)

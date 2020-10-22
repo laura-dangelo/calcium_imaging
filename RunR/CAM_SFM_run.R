@@ -133,6 +133,8 @@ run = calcium_gibbs(Nrep = nrep,
                     hyp_tau21 = 1000, hyp_tau22 = 1, 
                     hyp_gamma1 = 1, hyp_gamma2 = 1,
                     hyp_p1 = 1, hyp_p2 = 999,
+                    hyp_beta1 = 1, hyp_beta2 = 1,
+                    eps_beta = 0.01,
                     eps_gamma = 0.01,
                     eps_A = 0.002)
 
