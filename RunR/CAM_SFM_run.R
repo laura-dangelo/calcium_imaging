@@ -90,6 +90,7 @@ group5 <- sim_data(n = n5, sigma2 = sigma2, tau2 = tau2, time_spike = spp[spp>(n
                    prob = prob3, par = par3)
 
 
+
 y = c(group1$y, group2$y, group3$y, group4$y, group5$y)
 g = c(rep(1,n1), rep(2,n2), rep(3,n3), rep(4,n4), rep(5,n5))
 plot(y, type = "l")
@@ -110,7 +111,7 @@ sum(length(spp))/length(y)
 
 n = length(y)
 J = length(unique(g))
-nrep = 300
+nrep = 500
 set.seed(1234)
 
 run = calcium_gibbs(Nrep = nrep, 
@@ -123,23 +124,23 @@ run = calcium_gibbs(Nrep = nrep,
                     sigma2_start = 0.004, 
                     tau2_start = 0.00001, 
                     p_start = 0.001, 
-                    alpha = 1, beta = 1/50,
+                    alpha = 1, beta_start = 1/50,
                     max_xiK = 100, 
                     kappa_D = 0.5, 
                     c0 = 0, varC0 = 0.1, 
-                    hyp_A1 = 10, hyp_A2 = 10, 
+                    hyp_A1 = 10, hyp_A2 = 7, 
                     hyp_b1 = 0, hyp_b2 = 1, 
                     hyp_sigma21 = 1000, hyp_sigma22 = 1, 
                     hyp_tau21 = 1000, hyp_tau22 = 1, 
                     hyp_gamma1 = 1, hyp_gamma2 = 1,
                     hyp_p1 = 1, hyp_p2 = 999,
                     hyp_beta1 = 1, hyp_beta2 = 1,
-                    eps_beta = 0.01,
-                    eps_gamma = 0.01,
+                    eps_beta = 0.007,
+                    eps_gamma = 0.007,
                     eps_A = 0.002)
 
 
-
+plot(function(x) dgamma(x, 10, 7), 0, 3)
 # burnin = 1:500
 # run$calcium = run$calcium[,-burnin]
 # run$cluster = run$cluster[,-burnin]
@@ -167,6 +168,10 @@ lines(1:length(run$b[-burnin]), cumsum(run$b[-burnin])/1:length(run$b[-burnin]),
 
 plot(1:length(run$gamma[-burnin]), run$gamma[-burnin], type = "l", xlab = "iterazioni", ylab = "gamma")
 lines(1:length(run$gamma[-burnin]), cumsum(run$gamma[-burnin])/1:length(run$gamma[-burnin]), col =2)
+
+plot(1:length(run$beta[-burnin]), run$beta[-burnin], type = "l", xlab = "iterazioni", ylab = "gamma")
+lines(1:length(run$beta[-burnin]), cumsum(run$beta[-burnin])/1:length(run$beta[-burnin]), col =2)
+
 
 
 mean(run$sigma2[-burnin])
@@ -197,19 +202,21 @@ times = which(est_spikes>0)
 times
 spp
 
+#plot(1:length(AA[129,-burnin]), AA[129,-burnin], type = "l", xlab = "iterazioni", ylab = "gamma")
+
 sum(sapply(spp, function(x) !(x %in% times))) / length(spp)  ### spikes non identificati: falsi negativi
 sum(sapply(times, function(x) !(x %in% spp))) / (n-length(spp)) ### falsi positivi
 
 AA[,which(est_spikes == 0)] = 0
 barplot(table( apply(AA, 1, function(x) length(unique(x))) ))
 
-A_ind = AA[apply(AA, 1, function(x) length(unique( x )))==6,]
+A_ind = AA[apply(AA, 1, function(x) length(unique( x )))==7,]
 dataa = data.frame(A = A_ind[A_ind>0])
 ggplot(data = dataa, aes(x = A)) + 
   geom_histogram(bins = 35, aes(y = ..density..), col = "#00AFBB", fill = "#00AFBB", alpha = 0.3) +   
   stat_density(aes(y = ..density..), fill = 1, alpha = 0, col = 1) + 
   theme_bw() +
-  scale_x_continuous(limits = c(0.1,1))
+  scale_x_continuous(limits = c(0.1,2.7))
 
 
 

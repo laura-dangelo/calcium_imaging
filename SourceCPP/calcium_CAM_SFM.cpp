@@ -117,37 +117,27 @@ arma::vec stick_breaking(arma::vec beta_var)
   return(out) ;
 }
 
-double loglik_beta(double & beta,
-                   double & T,
-                   double & maxL,
-                   arma::vec& clusO_size,
-                   double & n_clusO)
+
+double logpost_beta(double beta, 
+                    double & hyp_beta1, double & hyp_beta2,
+                    int & T,
+                    int & maxL,
+                    const arma::vec& clusO_size,
+                    int & n_clusO)
 {
   double out ;
   arma::vec tmp(maxL) ;
   tmp.fill(0) ;
-  for(l = 0; l < maxL; l++ )
+  for(int l = 0; l < maxL; l++ )
   {
     if( clusO_size(l) > 0 )
     {
-      tmp(l) = Rcpp::lgamma( clusO_size(l) + beta ) - Rcpp::lgamma( beta ) ;
+      tmp(l) = lgamma( clusO_size(l) + beta ) - lgamma( beta ) ;
     }
   }
-  out = Rcpp::lfactorial( maxL ) - Rcpp::lfactorial( maxL - n_clusO ) + Rcpp::lgamma( maxL*beta ) - 
-    Rcpp::lgamma( T + maxL*beta ) + arma::accu(tmp) ;
+  out = lgamma( maxL +1 ) - lgamma( maxL - n_clusO +1 ) + lgamma( maxL * beta ) - 
+    lgamma( T + maxL * beta ) + arma::accu(tmp) + R::dgamma( beta, hyp_beta1, 1/hyp_beta2, true );
   return(out) ;
-}
-
-double logpost_beta(double & beta, 
-                    double & hyp_beta1, double & hyp_beta2,
-                    double & eps_beta,
-                    double & T,
-                    double & maxL,
-                    arma::vec& clusO_size,
-                    double & n_clusO)
-{
-  double out;
-  
 }
 
 
@@ -191,6 +181,8 @@ Rcpp::List slice_sampler(const arma::vec& y, const arma::vec& g,
   
   double oldA ;
   double newA ;
+  double oldbeta ;
+  double newbeta ;
   double ratio ;
  
   // step 1: sample latent uniform on the distributions
@@ -321,20 +313,20 @@ Rcpp::List slice_sampler(const arma::vec& y, const arma::vec& g,
   // MH step su beta
   clusO_size(0) = T - arma::accu(clusO_size) ;
   arma::uvec ind_cl = find( clusO_size > 0 ) ;
-  double n_clusO = ind_cl.n_elem ;
+  int n_clusO = ind_cl.n_elem ;
   
   oldbeta = beta ;
   newbeta = beta ;
       
   newbeta = oldbeta + R::runif(-eps_beta, eps_beta) ;
-  ratio = exp( logpost_beta(sub_y, cc(ind_l), 
-                           newA, b, 
-                           gamma, sigma2, tau2,
-                           hyp_A1, hyp_A2) -
-                logpost_beta(sub_y, cc(ind_l), 
-                           oldA, b, 
-                           gamma, sigma2, tau2,
-                           hyp_A1, hyp_A2) ) ;
+  ratio = exp( logpost_beta(newbeta, 
+                            hyp_beta1, hyp_beta2,
+                            T, maxL,
+                            clusO_size, n_clusO) -
+                logpost_beta(oldbeta, 
+                             hyp_beta1, hyp_beta2,
+                             T, maxL,
+                             clusO_size, n_clusO) ) ;
   if(R::runif(0, 1) < ratio) oldbeta = newbeta ;
   beta = oldbeta ; 
       
@@ -357,7 +349,7 @@ Rcpp::List calcium_gibbs(int Nrep,
                          double tau2_start, // varianza su equazione del calcio
                          double p_start,
                          double alpha, // concentration param DP on distributions
-                         double beta, // concentration param DP on observations
+                         double beta_start, // concentration param DP on observations
                          int max_xiK, // max length of deterministic sequences
                          double kappa_D, // parameters of the deterministic sequences
                          double c0, double varC0, // media e varianza c0 (calcio istante 0)
@@ -569,7 +561,8 @@ Rcpp::List calcium_gibbs(int Nrep,
                             Rcpp::Named("clusterO") = clusterO,
                             Rcpp::Named("clusterD") = clusterD,
                             Rcpp::Named("p") = out_p,
-                            Rcpp::Named("tau2") = out_tau2);
+                            Rcpp::Named("tau2") = out_tau2,
+                            Rcpp::Named("beta") = out_beta) ;
 }
 
 
