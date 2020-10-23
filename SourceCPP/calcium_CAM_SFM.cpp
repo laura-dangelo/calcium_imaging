@@ -270,7 +270,7 @@ Rcpp::List slice_sampler(const arma::vec& y, const arma::vec& g,
   {
     for(int l = 0; l < maxL; l++)
     {
-      probL[l] = omega_lk(l, clusterD(g(t)-1)-1) * R::dnorm(y(t) - b - gamma * cc(t), A(l), std::sqrt(sigma2 + tau2), false) ;
+      probL[l] = omega_lk( l, clusterD(g(t)-1) -1 ) * R::dnorm(y(t) - b - gamma * cc(t), A(l), std::sqrt(sigma2 + tau2), false) ;
     }
     
     clusterO(t) = Rcpp::sample(clusterO_id, 1, false, probL)[0] ;
@@ -317,7 +317,7 @@ Rcpp::List slice_sampler(const arma::vec& y, const arma::vec& g,
   
   oldbeta = beta ;
   newbeta = beta ;
-      
+ /*     
   newbeta = oldbeta + R::runif(-eps_beta, eps_beta) ;
   ratio = exp( logpost_beta(newbeta, 
                             hyp_beta1, hyp_beta2,
@@ -327,7 +327,7 @@ Rcpp::List slice_sampler(const arma::vec& y, const arma::vec& g,
                              hyp_beta1, hyp_beta2,
                              T, maxL,
                              clusO_size, n_clusO) ) ;
-  if(R::runif(0, 1) < ratio) oldbeta = newbeta ;
+  if(R::runif(0, 1) < ratio) oldbeta = newbeta ;*/
   beta = oldbeta ; 
       
   return Rcpp::List::create(Rcpp::Named("clusterO") = clusterO,
