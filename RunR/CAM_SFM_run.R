@@ -3,7 +3,7 @@ library(RcppDist)
 library(ggplot2)
 library(viridis)
 
-sourceCpp('./SourceCPP/calcium_CAM.cpp')
+# sourceCpp('./SourceCPP/calcium_CAM.cpp')
 sourceCpp('./SourceCPP/calcium_CAM_SFM.cpp')
 
 ## mixture ##
@@ -95,23 +95,23 @@ y = c(group1$y, group2$y, group3$y, group4$y, group5$y)
 g = c(rep(1,n1), rep(2,n2), rep(3,n3), rep(4,n4), rep(5,n5))
 plot(y, type = "l")
 
-A_start = rep(0,200)
-# A_start[2:7] = c(0.5, 0.7, 0.9, 1, 1.4)
-# AA = c(group1$A, group2$A, group3$A, group4$A)
+A_start = rep(0,30)
+A_start[2:6] = c(0.5, 0.7, 0.9, 1, 1.4)
+AA = c(group1$A, group2$A, group3$A, group4$A)
 
 cluster = rep(0, length(y))
-# cluster[AA == A_start[2]] = 1
-# cluster[AA == A_start[3]] = 2
-# cluster[AA == A_start[4]] = 3
-# cluster[AA == A_start[5]] = 4
-# cluster[AA == A_start[6]] = 5
+cluster[AA == A_start[2]] = 1
+cluster[AA == A_start[3]] = 2
+cluster[AA == A_start[4]] = 3
+cluster[AA == A_start[5]] = 4
+cluster[AA == A_start[6]] = 5
 
 
 sum(length(spp))/length(y)
 
 n = length(y)
 J = length(unique(g))
-nrep = 500
+nrep = 3
 set.seed(1234)
 
 run = calcium_gibbs(Nrep = nrep, 
@@ -121,10 +121,10 @@ run = calcium_gibbs(Nrep = nrep,
                     A_start = A_start,
                     b_start = 0,
                     gamma_start = 0.6, 
-                    sigma2_start = 0.004, 
-                    tau2_start = 0.00001, 
+                    sigma2_start = 0.08, 
+                    tau2_start = 0.01, 
                     p_start = 0.001, 
-                    alpha = 3, beta_start = 1/200,
+                    alpha = 3, beta_start = 1/100,
                     max_xiK = 100, 
                     kappa_D = 0.5, 
                     c0 = 0, varC0 = 0.1, 
@@ -134,13 +134,13 @@ run = calcium_gibbs(Nrep = nrep,
                     hyp_tau21 = 1000, hyp_tau22 = 1, 
                     hyp_gamma1 = 1, hyp_gamma2 = 1,
                     hyp_p1 = 1, hyp_p2 = 999,
-                    hyp_beta1 = 1, hyp_beta2 = 100,
+                    hyp_beta1 = 1, hyp_beta2 = 200,
                     eps_beta = 0.007,
                     eps_gamma = 0.007,
                     eps_A = 0.002)
 
 
-plot(function(x) dgamma(x, 10, 7), 0, 3)
+#plot(function(x) dgamma(x, 10, 7), 0, 3)
 # burnin = 1:500
 # run$calcium = run$calcium[,-burnin]
 # run$cluster = run$cluster[,-burnin]
@@ -152,7 +152,7 @@ plot(function(x) dgamma(x, 10, 7), 0, 3)
 # run$p = run$p[-burnin]
 # save(run, file = "res_sim_1709_par4_low.Rdata")
 
-burnin = 1:300
+burnin = 1:100
 plot(1:length(run$p[-burnin]), run$p[-burnin], type = "l")
 lines(1:length(run$p[-burnin]), cumsum(run$p[-burnin])/1:length(run$p[-burnin]), col =2)
 
@@ -223,7 +223,7 @@ barplot(table(apply(run$clusterD, 2, function(x) length(unique(x)) ))) # quanti 
 
 # analizzo il caso = 3
 mat_clusterD = matrix(NA, J, J)
-ind3 = which( apply(run$clusterD, 2, function(x) length(unique(x)) ) ==2 ) # <-- qui metti quanti cluster vuoi vedere
+ind3 = which( apply(run$clusterD, 2, function(x) length(unique(x)) ) ==3 ) # <-- qui metti quanti cluster vuoi vedere
 mat_heatmap = expand.grid(J1 = unique(g),
                           J2 = unique(g))
 for(i in 1:J)

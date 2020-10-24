@@ -13,19 +13,19 @@ plot(1:length(y_real), y_real, type = "l")
 str(y_real)
 
 n = length(y_real)
-nrep = 50
+nrep = 100
 
 
-out = list()
-out$calcium = matrix(c(0,y_real),length(y_real)+1, 1)
-out$cluster = matrix(0, length(y_real), 1)
-out$A = matrix(0, 100, 1)
-out$AA = matrix(NA, length(y_real), 1)
-out$b = 0
-out$gamma = 0.5
-out$sigma2 = 0.001
-out$tau2 = 0.0003
-out$p = 0.001
+# out = list()
+# out$calcium = matrix(c(0,y_real),length(y_real)+1, 1)
+# out$cluster = matrix(0, length(y_real), 1)
+# out$A = matrix(0, 100, 1)
+# out$AA = matrix(NA, length(y_real), 1)
+# out$b = 0
+# out$gamma = 0.5
+# out$sigma2 = 0.001
+# out$tau2 = 0.0003
+# out$p = 0.001
 
 
 start <- Sys.time()
@@ -46,7 +46,7 @@ run = calcium_gibbs(Nrep = nrep, y = y_real,
                       hyp_tau21 = 1000, hyp_tau22 = 1,
                       hyp_gamma1 = 1, hyp_gamma2 = 1,
                       hyp_p1 = 1, hyp_p2 = 999,
-                      eps_gamma = 0.003,
+                      eps_gamma = 0.005,
                       eps_A = 0.0009)
 end <- Sys.time()
 end - start
@@ -73,9 +73,9 @@ out$p = c(out$p, run$p)
 # out$p = out$p[-burnin]
 
 
-# save(out, file = "res_realdata_181020.Rdata")
+# save(out, file = "res_realdata_191020.Rdata")
 
-burnin = 1
+burnin = 1:100
 
 plot(1:length(out$p[-burnin]), out$p[-burnin], type = "l", xlab = "iterazioni", ylab = "p")
 lines(1:length(out$p[-burnin]), cumsum(out$p[-burnin])/1:length(out$p[-burnin]), col =2)

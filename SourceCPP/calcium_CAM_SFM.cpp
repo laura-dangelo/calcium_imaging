@@ -236,19 +236,49 @@ Rcpp::List slice_sampler(const arma::vec& y, const arma::vec& g,
     }
     v_lk(maxL - 1) = 1 ;
     omega_lk.col(k-1) = stick_breaking( v_lk ) ;
+    Rcout << "omega" << omega_lk.col(k-1)  << "\n" ;
   }
+  
 
   // step 5: sample the distributional cluster indicator
   NumericVector probK(maxK) ;
   IntegerVector clusterD_id =  Rcpp::seq(1, maxK);
   for(int j = 0; j < J; j++)
   {
+    arma::uvec ind_t = find(g == (j+1)) ;
+    arma::vec mixdens(ind_t.n_elem) ;
+    arma::vec comp(maxL) ;
+    
     for(int k = 0; k < maxK; k++)
     {
       probK[k] = 0 ;
       if( u_D(j) < xi_D(k) )
       {
         arma::vec omega_col = omega_lk.col(k) ;
+
+        for(int t = 0; t < ind_t.n_elem; t++)
+        {
+          for(int l = 0; l < maxL; l++)
+          {
+            comp(l) = omega_col(l) * R::dnorm(y(ind_t(t)) - b - gamma * cc(ind_t(t))- A(l), 0, std::sqrt(sigma2 + tau2), false) ;
+            // om_lk * p(y|A_l)
+          }
+          mixdens(t) = arma::accu(exp(comp)) ; // p(y_t) = sum_l^L om_lk * p(y|A_l)
+        }
+        probK[k] =  pi_k(k) / xi_D(k) * arma::prod(mixdens)  ;
+      }
+    }
+    clusterD(j) = Rcpp::sample(clusterD_id, 1, false, probK)[0] ;
+  }
+ /* 
+  for(int j = 0; j < J; j++)
+  {
+    for(int k = 0; k < maxK; k++)
+    {
+      probK[k] = 0 ;
+      if( u_D(j) < xi_D(k) )
+        arma::vec omega_col = omega_lk.col(k) ;
+      {
         arma::uvec ind_t = find(g == (j+1)) ;
         arma::vec ind_om = arma::unique( clusterO.elem( ind_t ) ) ;
         
@@ -261,7 +291,7 @@ Rcpp::List slice_sampler(const arma::vec& y, const arma::vec& g,
       }
     }
     clusterD(j) = Rcpp::sample(clusterD_id, 1, false, probK)[0] ;
-  }
+  }*/
 
   // step 6: sample the observational cluster indicator
   NumericVector probL(maxL) ;
@@ -317,7 +347,7 @@ Rcpp::List slice_sampler(const arma::vec& y, const arma::vec& g,
   
   oldbeta = beta ;
   newbeta = beta ;
- /*     
+      
   newbeta = oldbeta + R::runif(-eps_beta, eps_beta) ;
   ratio = exp( logpost_beta(newbeta, 
                             hyp_beta1, hyp_beta2,
@@ -327,7 +357,7 @@ Rcpp::List slice_sampler(const arma::vec& y, const arma::vec& g,
                              hyp_beta1, hyp_beta2,
                              T, maxL,
                              clusO_size, n_clusO) ) ;
-  if(R::runif(0, 1) < ratio) oldbeta = newbeta ;*/
+  if(R::runif(0, 1) < ratio) oldbeta = newbeta ;
   beta = oldbeta ; 
       
   return Rcpp::List::create(Rcpp::Named("clusterO") = clusterO,
