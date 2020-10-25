@@ -96,15 +96,15 @@ g = c(rep(1,n1), rep(2,n2), rep(3,n3), rep(4,n4), rep(5,n5))
 plot(y, type = "l")
 
 A_start = rep(0,100)
-A_start[2:6] = c(0.5, 0.9, 1.5, 1.9, 2.5)
-AA = c(group1$A, group2$A, group3$A, group4$A)
+# A_start[2:6] = c(0.5, 0.9, 1.5, 1.9, 2.5)
+# AA = c(group1$A, group2$A, group3$A, group4$A)
 
 cluster = rep(0, length(y))
-cluster[AA == A_start[2]] = 1
-cluster[AA == A_start[3]] = 2
-cluster[AA == A_start[4]] = 3
-cluster[AA == A_start[5]] = 4
-cluster[AA == A_start[6]] = 5
+# cluster[AA == A_start[2]] = 1
+# cluster[AA == A_start[3]] = 2
+# cluster[AA == A_start[4]] = 3
+# cluster[AA == A_start[5]] = 4
+# cluster[AA == A_start[6]] = 5
 
 
 sum(length(spp))/length(y)
@@ -162,7 +162,6 @@ plot(1:length(run$p[-burnin]), run$p[-burnin], type = "l")
 lines(1:length(run$p[-burnin]), cumsum(run$p[-burnin])/1:length(run$p[-burnin]), col =2)
 
 plot(1:length(run$sigma2[-burnin]), run$sigma2[-burnin], type = "l", xlab = "iterazioni", ylab = "sigma2")
-
 lines(1:length(run$sigma2[-burnin]), cumsum(run$sigma2[-burnin])/1:length(run$sigma2[-burnin]), col =2)
 
 plot(1:length(run$tau[-burnin]), run$tau[-burnin], type = "l", xlab = "iterazioni", ylab = "tau2")

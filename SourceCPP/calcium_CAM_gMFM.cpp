@@ -93,24 +93,23 @@ double sample_mix(double & p, double & hyp_A1, double & hyp_A2)
 // sample from dirichlet distribution
 arma::vec rdirichlet(arma::vec alpha_m) 
 {
-  int distribution_size = alpha_m.n_elem;
-  arma::vec distribution = arma::zeros(distribution_size);
+  int distribution_size = alpha_m.n_elem ;
+  arma::vec distribution = arma::zeros(distribution_size) ;
   
-  double sum_term = 0;
+  double sum_term = 0 ;
   // draw Gamma variables
-  for (int j = 0; j < distribution_size; ++j) 
+  for (int j = 0; j < distribution_size; j++) 
   {
-    double cur = R::rgamma(alpha_m[j],1.0);
-    distribution(j) = cur;
-    sum_term += cur;
+    double cur = R::rgamma(alpha_m[j], 1.0) ;
+    distribution(j) = cur ;
+    sum_term += cur ;
   }
-  // now normalize
-  for (int j = 0; j < distribution_size; ++j) 
+  // normalize
+  for (int j = 0; j < distribution_size; j++) 
   {
-    distribution(j) = distribution(j)/sum_term;
+    distribution(j) = distribution(j)/sum_term ;
   }
-
-  return(distribution);
+  return(distribution) ;
 }
 
 // calcola coefficienti xi_D = (xi_1, xi_2, ...)
@@ -156,7 +155,7 @@ double log_prod_frac(int maxL,
   return(out) ;
 }
 
-// prior on gamma
+// prior on beta
 /*
  * beta ~ Gamma(hyp_beta1, hyp_beta2)
  */
@@ -168,7 +167,7 @@ double logprior_beta(double beta,
   return(out) ;
 }
 
-// log-posterior for MH step
+// log-posterior for MH step on beta
 double logpost_beta(double beta, 
                     double & hyp_beta1, double & hyp_beta2,
                     int & T,
@@ -194,7 +193,7 @@ double logprior_maxL(int maxL, double & hyp_maxL)
   return(out) ;
 }
 
-// log-posterior for MH step
+// log-posterior for MH step on maxL
 double logpost_maxL(int maxL, 
                     double & hyp_maxL, 
                     double beta,
@@ -211,7 +210,7 @@ double logpost_maxL(int maxL,
 
 
 /*
- * Slice sampler per CAM + generalized MFM
+ * Slice sampler per CAM + gMFM
  */
 // [[Rcpp::export]]
 Rcpp::List mix_sampler(const arma::vec& y, const arma::vec& g, 
@@ -258,10 +257,7 @@ Rcpp::List mix_sampler(const arma::vec& y, const arma::vec& g,
   int newmaxL ;
   double ratio ;
  
-  /*
-   * PART 1: distributional clusters
-   */
-  
+
   // step 1: sample latent uniform on the distributions
   for(int j = 0; j < J; j++)
   {
@@ -272,8 +268,8 @@ Rcpp::List mix_sampler(const arma::vec& y, const arma::vec& g,
   int maxK = std::max(clusterD.max(), maxK_j.max()) ; // upper bound su numero di distribuzioni
   maxK = std::min( J, maxK );
   
-  // step 2: sample the stick-breaking weights on the distributions
   
+  // step 2: sample the stick-breaking weights on the distributions
   arma::vec v_k(maxK) ;
   arma::vec pi_k(maxK) ;
   for(int k = 1; k < maxK + 1; k++)
@@ -288,10 +284,8 @@ Rcpp::List mix_sampler(const arma::vec& y, const arma::vec& g,
   pi_k = stick_breaking( v_k ) ;
   
   
-  
-  // step 8: sample the weights on the observations
+  // step 3: sample the weights on the observations
   // for each k in {1,...,maxK} we have maxL weights: matrix(maxL, maxK)
-  
   for(int k = 1; k < maxK + 1; k++)
   {
     omega_lk.col(k-1).fill(0) ;
@@ -312,10 +306,9 @@ Rcpp::List mix_sampler(const arma::vec& y, const arma::vec& g,
   }
   
   
-  // step 3: sample the distributional cluster indicator
+  // step 4: sample the distributional cluster indicator
   NumericVector probK(maxK) ;
   IntegerVector clusterD_id =  Rcpp::seq(1, maxK);
-  
 /*  
   for(int j = 0; j < J; j++)
   {
@@ -358,12 +351,8 @@ Rcpp::List mix_sampler(const arma::vec& y, const arma::vec& g,
   } 
 */
   
-  /*
-   * PART 2: observational clusters
-   */
   
-  // step 4: sample the observational cluster indicator
-  
+  // step 5: sample the observational cluster indicator
   NumericVector probL(maxL) ;
   IntegerVector clusterO_id = Rcpp::seq(0, maxL-1) ;
   for(int t = 0; t < T; t++)
@@ -378,7 +367,7 @@ Rcpp::List mix_sampler(const arma::vec& y, const arma::vec& g,
   } 
   
   
-  // step 4b: relabel the clusters so that the first l=maxlabel are non-empty
+  // step 5b: relabel the clusters so that the first l=maxlabel are non-empty
   // determine the clusters size and the maximum occupied cluster (maxlabel)
   arma::vec clusterO_size(maxL) ;
   for(int l = 0; l < maxL; l++)
@@ -386,7 +375,6 @@ Rcpp::List mix_sampler(const arma::vec& y, const arma::vec& g,
     arma::uvec ind = find( clusterO == l ) ;
     clusterO_size(l) = ind.n_elem ;
   }
-  
   
   int cumsum = 0 ;
   for(int l = 0; l < maxL ; l++)
@@ -413,8 +401,7 @@ Rcpp::List mix_sampler(const arma::vec& y, const arma::vec& g,
   int maxlabel = max(clusterO) ; 
   
  
-  // step 5: sample the cluster parameters for the non-empty clusters
-  
+  // step 6: sample the cluster parameters for the non-empty clusters
   for(int l = 1; l < maxlabel + 1; l++)
   {
     arma::uvec ind_l = find( clusterO == l ) ;
@@ -437,8 +424,7 @@ Rcpp::List mix_sampler(const arma::vec& y, const arma::vec& g,
   }
    
   
-  // step 6: sample the number of components
-  
+  // step 7: sample the number of components
   oldmaxL = maxL ;
   newmaxL = maxL ;
   
@@ -462,7 +448,7 @@ Rcpp::List mix_sampler(const arma::vec& y, const arma::vec& g,
   maxL = std::min(oldmaxL, uu) ; 
 
   
-  // step 6b: update hyperparameter on Dirichlet distr  
+  // step 7b: update hyperparameter on Dirichlet distr  
   // MH step su beta
   oldbeta = beta ;
   newbeta = beta ;
@@ -484,8 +470,7 @@ Rcpp::List mix_sampler(const arma::vec& y, const arma::vec& g,
   beta = oldbeta ; 
   
   
-  // step 7: sample a cluster parameter for the empty components
-  
+  // step 8: sample a cluster parameter for the empty components
   int empty_comp = maxL - maxlabel ;
   if(empty_comp > 0)
   {
@@ -496,8 +481,6 @@ Rcpp::List mix_sampler(const arma::vec& y, const arma::vec& g,
   }
   
 
-   
-  
        
   return Rcpp::List::create(Rcpp::Named("clusterO") = clusterO,
                             Rcpp::Named("clusterD") = clusterD,
