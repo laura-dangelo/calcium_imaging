@@ -274,7 +274,8 @@ Rcpp::List mix_sampler(const arma::vec& y, const arma::vec& g,
     if( A(clusterO(t)) == 0 ) { clusterO(t) = 0 ; }
   } 
   
-  // RELABELING!!
+  // step 4b: relabel the clusters so that the first (maxlabel) are non-empty
+  // determine the clusters size and the maximum occupied cluster (maxlabel)
   arma::vec clusterO_size(maxL) ;
   for(int l = 0; l < maxL; l++)
   {
@@ -291,20 +292,18 @@ Rcpp::List mix_sampler(const arma::vec& y, const arma::vec& g,
     {
       do{ ll++ ; } while (clusterO_size(ll) == 0);
       arma::uvec ind = find( clusterO == ll ) ;
-      clusterO.elem(ind) = l ;
+      clusterO.elem(ind).fill(l) ;
       
       clusterO_size(l) = clusterO_size(ll) ;
       clusterO_size(ll) = 0 ;
       
       A(l) = A(ll) ;
+      A(ll) = 0 ;
     }
     if(cumsum == T) { l = maxL ; }
   }
   
-
-  
-  // step 4b: determine the clusters size and the maximum occupied cluster (number of non-empty clusters)
-  int maxlabel = max(maxlabel_tmp) ; // ultima componente occupata
+  int maxlabel = max(clusterO) ; 
   
  
  // step 5: sample the cluster parameters
