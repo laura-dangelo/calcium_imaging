@@ -309,7 +309,7 @@ Rcpp::List mix_sampler(const arma::vec& y, const arma::vec& g,
   // step 4: sample the distributional cluster indicator
   NumericVector probK(maxK) ;
   IntegerVector clusterD_id =  Rcpp::seq(1, maxK);
-/*  
+  
   for(int j = 0; j < J; j++)
   {
     arma::uvec ind_t = find(g == (j+1)) ;
@@ -325,16 +325,20 @@ Rcpp::List mix_sampler(const arma::vec& y, const arma::vec& g,
         arma::vec omega_col = omega_lk.col(k) ;
         for(int t = 0; t < ind_t.n_elem; t++)
         {
-          for(int l = 0; l < maxL; l++)
+          /*for(int l = 0; l < maxL; l++)
           {
             comp(l) = omega_col(l) * R::dnorm(y(ind_t(t)) - b - gamma * cc(ind_t(t))- A(l), 0, std::sqrt(sigma2 + tau2), false) ;
             // om_lk * p(y|A_l)
           }
-          mixdens(t) = arma::accu(exp(comp)) ; // p(y_t) = sum_l^L om_lk * p(y|A_l)
+          mixdens(t) = arma::accu(exp(comp)) ; // p(y_t) = sum_l^L om_lk * p(y|A_l)*/
+          int cl = clusterO( y(ind_t(t)) ) ;
+          mixdens(t) = omega_col(cl) * R::dnorm(y(ind_t(t)) - b - gamma * cc(ind_t(t))- A(cl), 0, std::sqrt(sigma2 + tau2), false) ;
         }
+        Rcout << "mixdens " << mixdens << "\n" ;
         probK[k] =  pi_k(k) / xi_D(k) * arma::prod(mixdens)  ;
-
-         //////
+        
+        //////
+        /*
         arma::vec omega_col = omega_lk.col(k) ;
         arma::vec ind_om = arma::unique( clusterO.elem( ind_t ) ) ;
         
@@ -344,12 +348,13 @@ Rcpp::List mix_sampler(const arma::vec& y, const arma::vec& g,
           subomega(h) = omega_col( ind_om(h) ) ;
         }
         probK[k] = pi_k(k) / xi_D(k) * arma::prod(subomega) ;
-          
+         */
+        if( NumericVector::is_na(probK[k]) ) {probK[k] = 0 ;}
       }
     }
     clusterD(j) = Rcpp::sample(clusterD_id, 1, false, probK)[0] ;
   } 
-*/
+
   
   
   // step 5: sample the observational cluster indicator
