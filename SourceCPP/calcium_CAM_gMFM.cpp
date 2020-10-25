@@ -90,6 +90,29 @@ double sample_mix(double & p, double & hyp_A1, double & hyp_A2)
  * funzioni per slice sampler
  */
 
+// sample from dirichlet distribution
+arma::vec rdirichlet(arma::vec alpha_m) 
+{
+  int distribution_size = alpha_m.n_elem;
+  arma::vec distribution = arma::zeros(distribution_size);
+  
+  double sum_term = 0;
+  // draw Gamma variables
+  for (int j = 0; j < distribution_size; ++j) 
+  {
+    double cur = R::rgamma(alpha_m[j],1.0);
+    distribution(j) = cur;
+    sum_term += cur;
+  }
+  // now normalize
+  for (int j = 0; j < distribution_size; ++j) 
+  {
+    distribution(j) = distribution(j)/sum_term;
+  }
+
+  return(distribution);
+}
+
 // calcola coefficienti xi_D = (xi_1, xi_2, ...)
 arma::vec fun_xi_D(double & kappa_D, int & max_xiK)
 {
@@ -231,8 +254,8 @@ Rcpp::List mix_sampler(const arma::vec& y, const arma::vec& g,
   double newA ;
   double oldbeta ;
   double newbeta ;
-  double oldmaxL ;
-  double newmaxL ;
+  int oldmaxL ;
+  int newmaxL ;
   double ratio ;
  
   /*
@@ -247,9 +270,10 @@ Rcpp::List mix_sampler(const arma::vec& y, const arma::vec& g,
   arma::vec maxK_j(J) ;
   maxK_j = 1 + arma::floor( (log(u_D) - log(1 - kappa_D)) / log(kappa_D) ) ;
   int maxK = std::max(clusterD.max(), maxK_j.max()) ; // upper bound su numero di distribuzioni
-
+  maxK = std::min( J, maxK );
   
   // step 2: sample the stick-breaking weights on the distributions
+  
   arma::vec v_k(maxK) ;
   arma::vec pi_k(maxK) ;
   for(int k = 1; k < maxK + 1; k++)
@@ -264,18 +288,60 @@ Rcpp::List mix_sampler(const arma::vec& y, const arma::vec& g,
   pi_k = stick_breaking( v_k ) ;
   
   
+  
+  // step 8: sample the weights on the observations
+  // for each k in {1,...,maxK} we have maxL weights: matrix(maxL, maxK)
+  
+  for(int k = 1; k < maxK + 1; k++)
+  {
+    omega_lk.col(k-1).fill(0) ;
+    arma::uvec ind_clusterD_k = find(clusterD_long == k) ; // indici delle y_t t.c. clusterD_t = k
+    arma::vec subcluster = clusterO.elem( ind_clusterD_k ) ; // labels dei cluster sulle osservazioni per le y ~ G*k
+    
+    arma::vec dir_param(maxL) ;
+    for(int l = 0; l < maxL ; l++)
+    {
+      arma::uvec subcluster_l = find( subcluster == l ) ;
+      dir_param(l) = beta/maxL + subcluster_l.n_elem ;
+    }
+    arma::vec sample_dir = rdirichlet(dir_param) ;
+    for(int l = 0; l < maxL ; l++)
+    {
+      omega_lk(l, k-1) = sample_dir(l) ;
+    }
+  }
+  
+  
   // step 3: sample the distributional cluster indicator
   NumericVector probK(maxK) ;
   IntegerVector clusterD_id =  Rcpp::seq(1, maxK);
+  
+  /*
   for(int j = 0; j < J; j++)
   {
+    arma::uvec ind_t = find(g == (j+1)) ;
+    arma::vec mixdens(ind_t.n_elem) ;
+    arma::vec comp(maxL) ;
+    
     for(int k = 0; k < maxK; k++)
     {
       probK[k] = 0 ;
       if( u_D(j) < xi_D(k) )
       {
+        /*
         arma::vec omega_col = omega_lk.col(k) ;
-        arma::uvec ind_t = find(g == (j+1)) ;
+        for(int t = 0; t < ind_t.n_elem; t++)
+        {
+          for(int l = 0; l < maxL; l++)
+          {
+            comp(l) = omega_col(l) * R::dnorm(y(ind_t(t)) - b - gamma * cc(ind_t(t))- A(l), 0, std::sqrt(sigma2 + tau2), false) ;
+            // om_lk * p(y|A_l)
+          }
+          mixdens(t) = arma::accu(exp(comp)) ; // p(y_t) = sum_l^L om_lk * p(y|A_l)
+        }
+        probK[k] =  pi_k(k) / xi_D(k) * arma::prod(mixdens)  ;
+         
+        arma::vec omega_col = omega_lk.col(k) ;
         arma::vec ind_om = arma::unique( clusterO.elem( ind_t ) ) ;
         
         arma::vec subomega( ind_om.n_elem ) ;
@@ -288,13 +354,14 @@ Rcpp::List mix_sampler(const arma::vec& y, const arma::vec& g,
     }
     clusterD(j) = Rcpp::sample(clusterD_id, 1, false, probK)[0] ;
   } 
-  
+*/
   
   /*
    * PART 2: observational clusters
    */
   
   // step 4: sample the observational cluster indicator
+  
   NumericVector probL(maxL) ;
   IntegerVector clusterO_id = Rcpp::seq(0, maxL-1) ;
   for(int t = 0; t < T; t++)
@@ -308,6 +375,7 @@ Rcpp::List mix_sampler(const arma::vec& y, const arma::vec& g,
     if( A(clusterO(t)) == 0 ) { clusterO(t) = 0 ; }
   } 
   
+  
   // step 4b: relabel the clusters so that the first l=maxlabel are non-empty
   // determine the clusters size and the maximum occupied cluster (maxlabel)
   arma::vec clusterO_size(maxL) ;
@@ -316,6 +384,7 @@ Rcpp::List mix_sampler(const arma::vec& y, const arma::vec& g,
     arma::uvec ind = find( clusterO == l ) ;
     clusterO_size(l) = ind.n_elem ;
   }
+  
   
   int cumsum = 0 ;
   for(int l = 0; l < maxL ; l++)
@@ -343,6 +412,7 @@ Rcpp::List mix_sampler(const arma::vec& y, const arma::vec& g,
   
  
   // step 5: sample the cluster parameters for the non-empty clusters
+  
   for(int l = 1; l < maxlabel + 1; l++)
   {
     arma::uvec ind_l = find( clusterO == l ) ;
@@ -363,14 +433,16 @@ Rcpp::List mix_sampler(const arma::vec& y, const arma::vec& g,
     if(R::runif(0, 1) < ratio) oldA = newA ;
     A(l) = oldA ; 
   }
+   
   
   // step 6: sample the number of components
+  
   oldmaxL = maxL ;
   newmaxL = maxL ;
   
   NumericVector prob_maxL(eps_maxL) ;
-  prob_maxL.fill(1/eps_maxL) ;
-  IntegerVector maxL_id =  Rcpp::seq(maxlabel, maxlabel + eps_maxL);
+  prob_maxL.fill(1.0/eps_maxL) ;
+  IntegerVector maxL_id =  Rcpp::seq(maxlabel + 1, maxlabel + eps_maxL);
   
   newmaxL =  Rcpp::sample(maxL_id, 1, false, prob_maxL)[0] ;
   ratio = exp( logpost_maxL(newmaxL, 
@@ -384,19 +456,16 @@ Rcpp::List mix_sampler(const arma::vec& y, const arma::vec& g,
                             clusterO_size,
                             maxlabel) ) ;
   if(R::runif(0, 1) < ratio) oldmaxL = newmaxL ;
-  maxL = oldmaxL ; 
+  int uu = A.n_elem ;
+  maxL = std::min(oldmaxL, uu) ; 
 
   
   // step 6b: update hyperparameter on Dirichlet distr  
   // MH step su beta
-  clusterO_size(0) = T - arma::accu(clusterO_size) ;
-  arma::uvec ind_cl = find( clusterO_size > 0 ) ;
-  int n_clusO = ind_cl.n_elem ;
-  
   oldbeta = beta ;
   newbeta = beta ;
   
-  newbeta = oldbeta + R::runif(-eps_beta, eps_beta) ;
+  newbeta = exp( R::rnorm( log(oldbeta), eps_beta ) ) ;
   ratio = exp( logpost_beta(newbeta, 
                             hyp_beta1, hyp_beta2,
                             T,
@@ -415,40 +484,17 @@ Rcpp::List mix_sampler(const arma::vec& y, const arma::vec& g,
   
   // step 7: sample a cluster parameter for the empty components
   
+  int empty_comp = maxL - maxlabel ;
+  if(empty_comp > 0)
+  {
+    for(int h = maxlabel + 1; h < maxL; h++)
+    {
+      A(h) = sample_mix(p, hyp_A1, hyp_A2) ;
+    }
+  }
   
-  
-  
-  
-  // step 8: sample the weights on the observations
-  // for each k in {1,...,maxK} we have maxL weights: matrix(maxL, maxK)
-  
-  /*  arma::vec v_lk(maxL) ;
-   arma::mat omega_lk(maxL, maxK) ;
-   for(int k = 1; k < maxK + 1; k++)
-   {
-   arma::uvec ind_clusterD_k = find(clusterD_long == k) ; // indici delle y_t t.c. clusterD_t = k
-   arma::vec subcluster = clusterO.elem( ind_clusterD_k ) ; // labels dei cluster sulle osservazioni per le y ~ G*k
+
    
-   for(int l = 0; l < maxL - 1; l++)
-   {
-   double a_lk = beta ;
-   double b_lk = beta * (maxL - l - 1);
-   
-   if( subcluster.n_elem > 0 )
-   {
-   arma::uvec ind_lk = find(subcluster == l) ; 
-   arma::uvec ind_mlk = find(subcluster > l) ;
-   
-   a_lk = a_lk + ind_lk.n_elem ;
-   b_lk = b_lk + ind_mlk.n_elem ;
-   }
-   
-   v_lk(l) = R::rbeta(a_lk, b_lk) ;
-   }
-   v_lk(maxL - 1) = 1 ;
-   omega_lk.col(k-1) = stick_breaking( v_lk ) ;
-   }
-   */
   
        
   return Rcpp::List::create(Rcpp::Named("clusterO") = clusterO,
@@ -515,6 +561,7 @@ Rcpp::List calcium_gibbs(int Nrep,
   out_tau2(0) = tau2_start ;
   out_p(0) = p_start ;
   out_beta(0) = beta_start ;
+  out_maxL(0) = maxL_start ;
   
   // init kalman filter quantities
   out_c.col(0) = cal;
@@ -531,10 +578,14 @@ Rcpp::List calcium_gibbs(int Nrep,
   double n_clus ;
   arma::vec AA = arma::zeros(n+1) ;
   Rcpp::List out_slice ;
-  arma::mat omega_lk(A_start.n_elem, unique_g.n_elem) ;
-  for(int k = 0; k ++; k < unique_g)
+  
+  arma::mat omega_lk(A_start.n_elem, J, arma::fill::zeros) ;
+  for(int k = 0; k < J ; k ++)
   {
-    omega_lk(0,k) = 1 ;
+    for(int l = 0; l < maxL_start; l++)
+    {
+      omega_lk(l,k) = 1.0/maxL_start ; 
+    }
   }
   
   clusterO.col(0) = clO ;
@@ -662,16 +713,17 @@ Rcpp::List calcium_gibbs(int Nrep,
     
     arma::vec out_slice_clusD = out_slice["clusterD"] ;
     clusterD.col(i+1) = out_slice_clusD ;
-//    clusterD.col(i+1) = clusterD.col(i) ;
+    //clusterD.col(i+1) = clusterD.col(i) ;
     
     arma::vec out_slice_A = out_slice["A"] ;
     out_A.col(i+1) = out_slice_A ;
- //   out_A.col(i+1) = out_A.col(i) ;
+   // out_A.col(i+1) = out_A.col(i) ;
  
     double out_slice_beta = out_slice["beta"] ;
     out_beta(i+1) = out_slice_beta ;
     
-    arma::mat omega_lk = out_slice["omega_lk"] ;
+    //arma::mat omega_lk_tmp = out_slice["omega_lk"] ;
+    //omega_lk = omega_lk_tmp ;
 
     double out_slice_maxL = out_slice["maxL"] ;
     out_maxL(i+1) = out_slice_maxL ;
@@ -703,7 +755,8 @@ Rcpp::List calcium_gibbs(int Nrep,
                             Rcpp::Named("clusterD") = clusterD,
                             Rcpp::Named("p") = out_p,
                             Rcpp::Named("tau2") = out_tau2,
-                            Rcpp::Named("beta") = out_beta) ;
+                            Rcpp::Named("beta") = out_beta,
+                            Rcpp::Named("maxL") = out_maxL) ;
 }
 
 

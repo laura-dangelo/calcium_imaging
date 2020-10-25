@@ -4,7 +4,7 @@ library(ggplot2)
 library(viridis)
 
 # sourceCpp('./SourceCPP/calcium_CAM.cpp')
-sourceCpp('./SourceCPP/calcium_CAM_SFM.cpp')
+sourceCpp('./SourceCPP/calcium_CAM_gMFM.cpp')
 
 ## mixture ##
 sim_data <- function(n, sigma2, tau2, time_spike, b, gamma, prob, par)
@@ -95,23 +95,23 @@ y = c(group1$y, group2$y, group3$y, group4$y, group5$y)
 g = c(rep(1,n1), rep(2,n2), rep(3,n3), rep(4,n4), rep(5,n5))
 plot(y, type = "l")
 
-A_start = rep(0,50)
-# A_start[2:7] = c(0.5, 0.7, 0.9, 1, 1.4)
-# AA = c(group1$A, group2$A, group3$A, group4$A)
+A_start = rep(0,100)
+A_start[2:6] = c(0.5, 0.7, 0.9, 1, 1.4)
+AA = c(group1$A, group2$A, group3$A, group4$A)
 
 cluster = rep(0, length(y))
-# cluster[AA == A_start[2]] = 1
-# cluster[AA == A_start[3]] = 2
-# cluster[AA == A_start[4]] = 3
-# cluster[AA == A_start[5]] = 4
-# cluster[AA == A_start[6]] = 5
+cluster[AA == A_start[2]] = 1
+cluster[AA == A_start[3]] = 2
+cluster[AA == A_start[4]] = 3
+cluster[AA == A_start[5]] = 4
+cluster[AA == A_start[6]] = 5
 
 
 sum(length(spp))/length(y)
 
 n = length(y)
 J = length(unique(g))
-nrep = 700
+nrep = 200
 set.seed(1234)
 
 run = calcium_gibbs(Nrep = nrep, 
@@ -124,7 +124,8 @@ run = calcium_gibbs(Nrep = nrep,
                     sigma2_start = 0.004, 
                     tau2_start = 0.00001, 
                     p_start = 0.001, 
-                    alpha = 3, beta_start = 1/100,
+                    alpha = 3, beta_start = 1,
+                    maxL_start = 20,
                     max_xiK = 100, 
                     kappa_D = 0.5, 
                     c0 = 0, varC0 = 0.1, 
@@ -134,10 +135,14 @@ run = calcium_gibbs(Nrep = nrep,
                     hyp_tau21 = 1000, hyp_tau22 = 1, 
                     hyp_gamma1 = 1, hyp_gamma2 = 1,
                     hyp_p1 = 1, hyp_p2 = 999,
-                    hyp_beta1 = 1, hyp_beta2 = 200,
-                    eps_beta = 0.007,
+                    hyp_beta1 = 1, hyp_beta2 = 1,
+                    hyp_maxL = 5,
+                    eps_beta = 1,
                     eps_gamma = 0.007,
-                    eps_A = 0.002)
+                    eps_A = 0.002,
+                    eps_maxL = 10)
+
+  
 
 
 plot(function(x) dgamma(x, 10, 7), 0, 3)
@@ -152,7 +157,7 @@ plot(function(x) dgamma(x, 10, 7), 0, 3)
 # run$p = run$p[-burnin]
 # save(run, file = "res_sim_1709_par4_low.Rdata")
 
-burnin = 1:200
+burnin = 1:50
 plot(1:length(run$p[-burnin]), run$p[-burnin], type = "l")
 lines(1:length(run$p[-burnin]), cumsum(run$p[-burnin])/1:length(run$p[-burnin]), col =2)
 
@@ -172,12 +177,16 @@ lines(1:length(run$gamma[-burnin]), cumsum(run$gamma[-burnin])/1:length(run$gamm
 plot(1:length(run$beta[-burnin]), run$beta[-burnin], type = "l", xlab = "iterazioni", ylab = "beta")
 lines(1:length(run$beta[-burnin]), cumsum(run$beta[-burnin])/1:length(run$beta[-burnin]), col =2)
 
+plot(1:length(run$maxL[-burnin]), run$maxL[-burnin], type = "l", xlab = "iterazioni", ylab = "maxL")
+lines(1:length(run$maxL[-burnin]), cumsum(run$maxL[-burnin])/1:length(run$maxL[-burnin]), col =2)
+
 
 
 mean(run$sigma2[-burnin])
 mean(run$tau2[-burnin])
 mean(run$b[-burnin])
 mean(run$gamma[-burnin])
+
 
 #apply(run$A, 2, function(x) max(which(x>0)) ) # massima componente occupata del cluster sulle osservazioni
 table(apply(run$A[,-burnin], 2, function(x) max(which(x>0)) ) )
@@ -208,13 +217,13 @@ sum(sapply(times, function(x) !(x %in% spp))) / (n-length(spp)) ### falsi positi
 AA[,which(est_spikes == 0)] = 0
 barplot(table( apply(AA, 1, function(x) length(unique(x))) ))
 
-A_ind = AA[apply(AA, 1, function(x) length(unique( x )))==8,]
+A_ind = AA[apply(AA, 1, function(x) length(unique( x )))==5,]
 dataa = data.frame(A = A_ind[A_ind>0])
 ggplot(data = dataa, aes(x = A)) + 
   geom_histogram(bins = 35, aes(y = ..density..), col = "#00AFBB", fill = "#00AFBB", alpha = 0.3) +   
   stat_density(aes(y = ..density..), fill = 1, alpha = 0, col = 1) + 
-  theme_bw() +
-  scale_x_continuous(limits = c(0.1,2.7))
+  theme_bw() 
+ # scale_x_continuous(limits = c(0.1,2.7))
 
 
 
