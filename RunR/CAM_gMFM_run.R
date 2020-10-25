@@ -96,7 +96,7 @@ g = c(rep(1,n1), rep(2,n2), rep(3,n3), rep(4,n4), rep(5,n5))
 plot(y, type = "l")
 
 A_start = rep(0,100)
-A_start[2:6] = c(0.5, 0.7, 0.9, 1, 1.4)
+A_start[2:6] = c(0.5, 0.9, 1.5, 1.9, 2.5)
 AA = c(group1$A, group2$A, group3$A, group4$A)
 
 cluster = rep(0, length(y))
@@ -111,7 +111,7 @@ sum(length(spp))/length(y)
 
 n = length(y)
 J = length(unique(g))
-nrep = 200
+nrep = 500
 set.seed(1234)
 
 run = calcium_gibbs(Nrep = nrep, 
@@ -136,7 +136,7 @@ run = calcium_gibbs(Nrep = nrep,
                     hyp_gamma1 = 1, hyp_gamma2 = 1,
                     hyp_p1 = 1, hyp_p2 = 999,
                     hyp_beta1 = 1, hyp_beta2 = 1,
-                    hyp_maxL = 5,
+                    hyp_maxL = 10,
                     eps_beta = 1,
                     eps_gamma = 0.007,
                     eps_A = 0.002,
@@ -145,7 +145,7 @@ run = calcium_gibbs(Nrep = nrep,
   
 
 
-plot(function(x) dgamma(x, 10, 7), 0, 3)
+#plot(function(x) dgamma(x, 10, 7), 0, 3)
 # burnin = 1:500
 # run$calcium = run$calcium[,-burnin]
 # run$cluster = run$cluster[,-burnin]
@@ -188,8 +188,6 @@ mean(run$b[-burnin])
 mean(run$gamma[-burnin])
 
 
-#apply(run$A, 2, function(x) max(which(x>0)) ) # massima componente occupata del cluster sulle osservazioni
-table(apply(run$A[,-burnin], 2, function(x) max(which(x>0)) ) )
 
 
 #apply(run$A, 2, function(x) length(which(x>0)) ) # numero di clusters sulle osservazioni

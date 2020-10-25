@@ -316,7 +316,7 @@ Rcpp::List mix_sampler(const arma::vec& y, const arma::vec& g,
   NumericVector probK(maxK) ;
   IntegerVector clusterD_id =  Rcpp::seq(1, maxK);
   
-  /*
+/*  
   for(int j = 0; j < J; j++)
   {
     arma::uvec ind_t = find(g == (j+1)) ;
@@ -328,7 +328,7 @@ Rcpp::List mix_sampler(const arma::vec& y, const arma::vec& g,
       probK[k] = 0 ;
       if( u_D(j) < xi_D(k) )
       {
-        /*
+        
         arma::vec omega_col = omega_lk.col(k) ;
         for(int t = 0; t < ind_t.n_elem; t++)
         {
@@ -340,7 +340,8 @@ Rcpp::List mix_sampler(const arma::vec& y, const arma::vec& g,
           mixdens(t) = arma::accu(exp(comp)) ; // p(y_t) = sum_l^L om_lk * p(y|A_l)
         }
         probK[k] =  pi_k(k) / xi_D(k) * arma::prod(mixdens)  ;
-         
+
+         //////
         arma::vec omega_col = omega_lk.col(k) ;
         arma::vec ind_om = arma::unique( clusterO.elem( ind_t ) ) ;
         
@@ -350,6 +351,7 @@ Rcpp::List mix_sampler(const arma::vec& y, const arma::vec& g,
           subomega(h) = omega_col( ind_om(h) ) ;
         }
         probK[k] = pi_k(k) / xi_D(k) * arma::prod(subomega) ;
+          
       }
     }
     clusterD(j) = Rcpp::sample(clusterD_id, 1, false, probK)[0] ;
@@ -722,8 +724,8 @@ Rcpp::List calcium_gibbs(int Nrep,
     double out_slice_beta = out_slice["beta"] ;
     out_beta(i+1) = out_slice_beta ;
     
-    //arma::mat omega_lk_tmp = out_slice["omega_lk"] ;
-    //omega_lk = omega_lk_tmp ;
+    arma::mat omega_lk_tmp = out_slice["omega_lk"] ;
+    omega_lk = omega_lk_tmp ;
 
     double out_slice_maxL = out_slice["maxL"] ;
     out_maxL(i+1) = out_slice_maxL ;
