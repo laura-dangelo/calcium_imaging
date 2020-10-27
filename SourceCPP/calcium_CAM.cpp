@@ -233,25 +233,28 @@ Rcpp::List slice_sampler(const arma::vec& y, const arma::vec& g,
   IntegerVector clusterD_id =  Rcpp::seq(1, maxK);
   for(int j = 0; j < J; j++)
   {
+    arma::uvec ind_t = find(g == (j+1)) ;
+    arma::vec mixcomp(ind_t.n_elem) ;
     for(int k = 0; k < maxK; k++)
     {
-      probK[k] = 0 ;
+      probK[k] = -999 ;
       if( u_D(j) < xi_D(k) )
       {
         arma::vec omega_col = omega_lk.col(k) ;
-        arma::uvec ind_t = find(g == (j+1)) ;
-        arma::vec ind_om = arma::unique( clusterO.elem( ind_t ) ) ;
-        
-        arma::vec subomega( ind_om.n_elem ) ;
-        for(int h = 0; h < ind_om.n_elem; h++)
+        for(int t = 0; t < ind_t.n_elem; t++)
         {
-          subomega(h) = omega_col( ind_om(h) ) ;
+          int cl = clusterO( ind_t(t) ) ;
+          mixcomp(t) = log( omega_col(cl) ) ;
         }
-        probK[k] = pi_k(k) / xi_D(k) * arma::prod(subomega) ;
+        probK[k] = log( pi_k(k) ) - log( xi_D(k) ) + arma::accu(mixcomp) ;
       }
     }
+    probK =  probK - max(probK)  ;
+    probK =  exp(probK)  ;
     clusterD(j) = Rcpp::sample(clusterD_id, 1, false, probK)[0] ;
   }
+
+ 
 
   // step 6: sample the observational cluster indicator
   NumericVector probL(maxL) ;

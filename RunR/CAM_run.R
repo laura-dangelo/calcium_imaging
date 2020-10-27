@@ -110,7 +110,7 @@ sum(length(spp))/length(y)
 
 n = length(y)
 J = length(unique(g))
-nrep = 1500
+nrep = 3000
 set.seed(1234)
 
 run = calcium_gibbs(Nrep = nrep, 
@@ -181,6 +181,7 @@ barplot(table(apply(run$A[,-burnin], 2, function(x) length(which(x>0))+1 )))
 #maxx = max(apply(run$A, 2, function(x) max(which(x>0)) ))
 #t(run$A[1:maxx,100:120]) 
 
+burnin = 1:2700
 AA = matrix(0,length(run$b[-burnin]),n)
 for(i in 1:length(run$b[-burnin]))
 {
