@@ -64,10 +64,10 @@ prob1 = rep(0.2, 5)
 par1 = c(0.5, 0.9, 1.5, 1.9, 2.5)
 
 prob2 = rep(0.25, 4)
-par2 = c(0.5, 0.9, 1.5, 2.5)
+par2 = c(0.7, 0.9, 1.5, 2.2)
 
 prob3 = c(0.33, 0.33, 0.34)
-par3 = c(0.5, 1.5, 1.9)
+par3 = c(0.5, 1.2, 1.9)
 
 group1 <- sim_data(n = n1, sigma2 = sigma2, tau2 = tau2, time_spike = spp[spp<=n1],
                  gamma = gamma, b = b,
@@ -124,7 +124,7 @@ run = calcium_gibbs(Nrep = nrep,
                     sigma2_start = 0.004, 
                     tau2_start = 0.00001, 
                     p_start = 0.001, 
-                    alpha = 3, beta_start = 1,
+                    alpha = 30, beta_start = 1,
                     maxL_start = 20,
                     max_xiK = 100, 
                     kappa_D = 0.5, 
@@ -157,7 +157,7 @@ run = calcium_gibbs(Nrep = nrep,
 # run$p = run$p[-burnin]
 # save(run, file = "res_sim_1709_par4_low.Rdata")
 
-burnin = 1:400
+burnin = 1:2000
 plot(1:length(run$p[-burnin]), run$p[-burnin], type = "l")
 lines(1:length(run$p[-burnin]), cumsum(run$p[-burnin])/1:length(run$p[-burnin]), col =2)
 
@@ -214,7 +214,7 @@ sum(sapply(times, function(x) !(x %in% spp))) / (n-length(spp)) ### falsi positi
 AA[,which(est_spikes == 0)] = 0
 barplot(table( apply(AA, 1, function(x) length(unique(x))) ))
 
-A_ind = AA[apply(AA, 1, function(x) length(unique( x )))==6,]
+A_ind = AA[apply(AA, 1, function(x) length(unique( x )))==8,]
 dataa = data.frame(A = A_ind[A_ind>0])
 ggplot(data = dataa, aes(x = A)) + 
   geom_histogram(bins = 35, aes(y = ..density..), col = "#00AFBB", fill = "#00AFBB", alpha = 0.3) +   

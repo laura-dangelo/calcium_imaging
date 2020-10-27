@@ -323,6 +323,36 @@ Rcpp::List mix_sampler(const arma::vec& y, const arma::vec& g,
         arma::vec omega_col = omega_lk.col(k) ;
         for(int t = 0; t < ind_t.n_elem; t++)
         {
+          arma::vec comp(maxL) ;
+          for(int l = 0; l < maxL; l++)
+          {
+            comp(l) = omega_col(l) * R::dnorm(y(ind_t(t)) - b - gamma * cc(ind_t(t)) - A(l), 0, std::sqrt(sigma2 + tau2), false) ;
+          }
+          mixdens(t) = log( arma::accu(comp) ) ;
+        }
+        
+        probK[k] =  log( pi_k(k) ) - log( xi_D(k) ) + arma::accu(mixdens) ;
+      }
+    }
+    probK =  probK - max(probK)  ;
+    probK =  exp(probK)  ;
+    clusterD(j) = Rcpp::sample(clusterD_id, 1, false, probK )[0] ;
+  } 
+
+  /*
+  for(int j = 0; j < J; j++)
+  {
+    arma::uvec ind_t = find(g == (j+1)) ;
+    arma::vec mixdens(ind_t.n_elem) ;
+    
+    for(int k = 0; k < maxK; k++)
+    {
+      probK[k] = -9999 ;
+      if( u_D(j) < xi_D(k) )
+      {
+        arma::vec omega_col = omega_lk.col(k) ;
+        for(int t = 0; t < ind_t.n_elem; t++)
+        {
           int cl = clusterO( ind_t(t) ) ;
           mixdens(t) = log( omega_col(cl) ) + R::dnorm(y(ind_t(t)) - b - gamma * cc(ind_t(t)) - A(cl), 0, std::sqrt(sigma2 + tau2), true) ;
         }
@@ -334,8 +364,7 @@ Rcpp::List mix_sampler(const arma::vec& y, const arma::vec& g,
     probK =  exp(probK)  ;
     clusterD(j) = Rcpp::sample(clusterD_id, 1, false, probK )[0] ;
   } 
-
-  
+  */
   
   // step 5: sample the observational cluster indicator
   NumericVector probL(maxL) ;
