@@ -111,7 +111,7 @@ sum(length(spp))/length(y)
 
 n = length(y)
 J = length(unique(g))
-nrep = 2500
+nrep = 3000
 set.seed(1234)
 
 run = calcium_gibbs(Nrep = nrep, 
@@ -157,7 +157,7 @@ run = calcium_gibbs(Nrep = nrep,
 # run$p = run$p[-burnin]
 # save(run, file = "res_sim_1709_par4_low.Rdata")
 
-burnin = 1:2000
+burnin = 1:400
 plot(1:length(run$p[-burnin]), run$p[-burnin], type = "l")
 lines(1:length(run$p[-burnin]), cumsum(run$p[-burnin])/1:length(run$p[-burnin]), col =2)
 
@@ -192,7 +192,7 @@ mean(run$gamma[-burnin])
 #apply(run$A, 2, function(x) length(which(x>0)) ) # numero di clusters sulle osservazioni
 barplot(table(apply(run$A[,-burnin], 2, function(x) length(which(x>0))+1 )))
 
-burnin = 1:2000
+burnin = 1:2700
 AA = matrix(0,length(run$b[-burnin]),n)
 for(i in 1:length(run$b[-burnin]))
 {
@@ -229,7 +229,7 @@ barplot(table(apply(run$clusterD, 2, function(x) length(unique(x)) ))) # quanti 
 
 # analizzo il caso = 3
 mat_clusterD = matrix(NA, J, J)
-ind3 = which( apply(run$clusterD, 2, function(x) length(unique(x)) ) ==3 ) # <-- qui metti quanti cluster vuoi vedere
+ind3 = which( apply(run$clusterD, 2, function(x) length(unique(x)) ) ==2 ) # <-- qui metti quanti cluster vuoi vedere
 mat_heatmap = expand.grid(J1 = unique(g),
                           J2 = unique(g))
 for(i in 1:J)
