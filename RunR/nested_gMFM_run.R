@@ -96,30 +96,37 @@ y = c(group1$y, group2$y, group3$y, group4$y, group5$y)
 g = c(rep(1,n1), rep(2,n2), rep(3,n3), rep(4,n4), rep(5,n5))
 plot(y, type = "l")
 
+hist(y[y>0.5])
+clus = kmeans(y[y>0.5], centers = 5)
+
 A_start = rep(0,100)
-A_start[2:8] = c(0.3, 0.5, 0.7, 1, 1.2, 1.5, 1.9)
+# A_start[2:8] = c(0.3, 0.5, 0.7, 1, 1.2, 1.5, 1.9)
 AA = c(group1$A, group2$A, group3$A, group4$A)
 
 cluster = rep(0, length(y))
-cluster[AA == A_start[2]] = 1
-cluster[AA == A_start[3]] = 2
-cluster[AA == A_start[4]] = 3
-cluster[AA == A_start[5]] = 4
-cluster[AA == A_start[6]] = 5
-cluster[AA == A_start[7]] = 6
-cluster[AA == A_start[8]] = 7
+# cluster[AA == A_start[2]] = 1
+# cluster[AA == A_start[3]] = 2
+# cluster[AA == A_start[4]] = 3
+# cluster[AA == A_start[5]] = 4
+# cluster[AA == A_start[6]] = 5
+# cluster[AA == A_start[7]] = 6
+# cluster[AA == A_start[8]] = 7
+
+A_start[2:6] = c(clus$centers)
+cluster = numeric(length(y))
+cluster[y>0.5] = clus$cluster
 
 sum(length(spp))/length(y)
 
 n = length(y)
 J = length(unique(g))
-nrep = 600
+nrep = 3000
 set.seed(1234)
 
 run = calcium_gibbs(Nrep = nrep, 
                     y = y, g = g,
                     cal = c(0,y),
-                    clO = cluster, clD = c(1,2,3,1,3), 
+                    clO = cluster, clD = c(1,2,3,4,5), 
                     A_start = A_start,
                     b_start = 0,
                     gamma_start = 0.6, 
@@ -160,7 +167,7 @@ run = calcium_gibbs(Nrep = nrep,
 # run$p = run$p[-burnin]
 # save(run, file = "res_sim_1709_par4_low.Rdata")
 
-burnin = 1:250
+burnin = 1:1500
 plot(1:length(run$p[-burnin]), run$p[-burnin], type = "l")
 lines(1:length(run$p[-burnin]), cumsum(run$p[-burnin])/1:length(run$p[-burnin]), col =2)
 
@@ -200,7 +207,7 @@ mean(run$gamma[-burnin])
 #apply(run$A, 2, function(x) length(which(x>0)) ) # numero di clusters sulle osservazioni
 barplot(table(apply(run$A[,-burnin], 2, function(x) length(which(x>0))+1 )))
 
-burnin = 1:500
+burnin = 1:2500
 AA = matrix(0,length(run$b[-burnin]),n)
 for(i in 1:length(run$b[-burnin]))
 {
@@ -217,7 +224,7 @@ sum(sapply(times, function(x) !(x %in% spp))) / (n-length(spp)) ### falsi positi
 AA[,which(est_spikes == 0)] = 0
 barplot(table( apply(AA, 1, function(x) length(unique(x))) ))
 
-A_ind = AA[apply(AA, 1, function(x) length(unique( x )))==9,]
+A_ind = AA[apply(AA, 1, function(x) length(unique( x )))==8,]
 dataa = data.frame(A = A_ind[A_ind>0])
 ggplot(data = dataa, aes(x = A)) + 
   geom_histogram(bins = 35, aes(y = ..density..), col = "#00AFBB", fill = "#00AFBB", alpha = 0.3) +   
@@ -232,7 +239,7 @@ barplot(table(apply(run$clusterD, 2, function(x) length(unique(x)) ))) # quanti 
 
 # analizzo il caso = 3
 mat_clusterD = matrix(NA, J, J)
-ind3 = which( apply(run$clusterD, 2, function(x) length(unique(x)) ) ==3 ) # <-- qui metti quanti cluster vuoi vedere
+ind3 = which( apply(run$clusterD, 2, function(x) length(unique(x)) ) ==2 ) # <-- qui metti quanti cluster vuoi vedere
 mat_heatmap = expand.grid(J1 = unique(g),
                           J2 = unique(g))
 for(i in 1:J)

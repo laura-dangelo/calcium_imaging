@@ -259,8 +259,6 @@ Rcpp::List mix_sampler(const arma::vec& y, const arma::vec& g,
  
 
   // step 1: sample the weights on the distributions
-  Rcout << "step1 " <<  maxK << "\n" ;
-  Rcout << "clusterD " <<  clusterD << "\n" ;
   arma::vec dir_paramD(maxK) ;
   for(int k = 1; k < maxK + 1; k++)
   {
@@ -273,7 +271,6 @@ Rcpp::List mix_sampler(const arma::vec& y, const arma::vec& g,
   {
     pi_k(k) = sample_dir_d(k) ;
   }
-   
 
   
   // step 2: sample the weights on the observations
@@ -282,8 +279,9 @@ Rcpp::List mix_sampler(const arma::vec& y, const arma::vec& g,
   {
     omega_lk.col(k-1).fill(0) ;
     arma::uvec ind_clusterD_k = find(clusterD_long == k) ; // indici delle y_t t.c. clusterD_t = k
-    arma::vec subcluster = clusterO.elem( ind_clusterD_k ) ; // labels dei cluster sulle osservazioni per le y ~ G*k
     
+    arma::vec subcluster = clusterO.elem( ind_clusterD_k ) ; // labels dei cluster sulle osservazioni per le y ~ G*k
+      
     arma::vec dir_param(maxL) ;
     for(int l = 0; l < maxL ; l++)
     {
@@ -296,10 +294,9 @@ Rcpp::List mix_sampler(const arma::vec& y, const arma::vec& g,
       omega_lk(l, k-1) = sample_dir(l) ;
     }
   }
-
+  
   
   // step 3: sample the distributional cluster indicator
-  
   NumericVector probK(maxK) ;
   IntegerVector clusterD_id =  Rcpp::seq(1, maxK);
   for(int j = 0; j < J; j++)
@@ -327,11 +324,9 @@ Rcpp::List mix_sampler(const arma::vec& y, const arma::vec& g,
     probK =  exp(probK)  ;
     clusterD(j) = Rcpp::sample(clusterD_id, 1, false, probK )[0] ;
   } 
-
   
   // step 3b: relabel the clusters so that the first k=maxdist are non-empty
   // determine the clusters size and the maximum occupied cluster (maxdist)
-  
   arma::vec clusterD_size(maxK) ;
   for(int k = 0; k < maxK; k++)
   {
@@ -361,7 +356,6 @@ Rcpp::List mix_sampler(const arma::vec& y, const arma::vec& g,
   int maxdistr = max(clusterD) ; 
   
 
-  
   // step 4: sample the observational cluster indicator
   NumericVector probL(maxL) ;
   IntegerVector clusterO_id = Rcpp::seq(0, maxL-1) ;
@@ -375,8 +369,6 @@ Rcpp::List mix_sampler(const arma::vec& y, const arma::vec& g,
     clusterO(t) = Rcpp::sample(clusterO_id, 1, false, probL)[0] ;
     if( A(clusterO(t)) == 0 ) { clusterO(t) = 0 ; }
   } 
-  
-
   
   // step 4b: relabel the clusters so that the first l=maxlabel are non-empty
   // determine the clusters size and the maximum occupied cluster (maxlabel)
@@ -436,7 +428,6 @@ Rcpp::List mix_sampler(const arma::vec& y, const arma::vec& g,
    
    
   // step 6: sample the number of components on the distributions
-  
   oldmaxK = maxK ;
   newmaxK = maxK ;
   
@@ -628,7 +619,7 @@ Rcpp::List calcium_gibbs(int Nrep,
   arma::vec AA = arma::zeros(n+1) ;
   Rcpp::List out_slice ;
   
-  arma::mat omega_lk(A_start.n_elem, J, arma::fill::zeros) ;
+  arma::mat omega_lk(A_start.n_elem, J*3, arma::fill::zeros) ;
   for(int k = 0; k < J ; k ++)
   {
     for(int l = 0; l < maxL_start; l++)
@@ -636,8 +627,8 @@ Rcpp::List calcium_gibbs(int Nrep,
       omega_lk(l,k) = 1.0/maxL_start ; 
     }
   }
-  arma::vec pi_k(J*5) ;
-  pi_k.fill(1.0/(J*5)) ;
+  arma::vec pi_k(J*3) ;
+  pi_k.fill(1.0/(J*3)) ;
   
   clusterO.col(0) = clO ;
   clusterD.col(0) = clD ;
