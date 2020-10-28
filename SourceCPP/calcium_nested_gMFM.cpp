@@ -162,14 +162,8 @@ double logpost_beta(double beta,
 
 // prior on maxL
 /*
- * maxL -1 ~ Poisson(hyp_maxL)
+ * max - 1 ~ BNB(hyp1, hyp2, hyp3)
  */
-double logprior_maxL(int maxL, double hyp_maxL)
-{
-  double out ;
-  out = R::dpois(maxL - 1, hyp_maxL, true) ;
-  return(out) ;
-}
 
 double lbeta(double a, double b)
 {
@@ -183,7 +177,7 @@ double logprior_maxx(int maxx, double hyp_max1,
 {
   double out ;
   out = lgamma( hyp_max1 + maxx - 1 ) + lbeta( hyp_max1 + hyp_max2, maxx - 1 + hyp_max3) -
-    lgamma( hyp_max1 ) - lgamma( maxx ) - lbeta(hyp_max2, hyp_max3) ;
+    lgamma( hyp_max1 ) - lgamma( maxx ) - lbeta( hyp_max2, hyp_max3 ) ;
   return(out) ;
 }
 
@@ -324,7 +318,7 @@ Rcpp::List mix_sampler(const arma::vec& y, const arma::vec& g,
     probK =  exp(probK)  ;
     clusterD(j) = Rcpp::sample(clusterD_id, 1, false, probK )[0] ;
   } 
-  
+
   // step 3b: relabel the clusters so that the first k=maxdist are non-empty
   // determine the clusters size and the maximum occupied cluster (maxdist)
   arma::vec clusterD_size(maxK) ;
@@ -426,15 +420,15 @@ Rcpp::List mix_sampler(const arma::vec& y, const arma::vec& g,
     A(l) = oldA ; 
   }
    
-   
+  
   // step 6: sample the number of components on the distributions
   oldmaxK = maxK ;
   newmaxK = maxK ;
   
   NumericVector prob_maxK(eps_maxK) ;
   prob_maxK.fill(1.0/eps_maxK) ;
-  IntegerVector maxK_id =  Rcpp::seq(maxdistr, maxdistr + eps_maxK - 1 );
-  
+  IntegerVector maxK_id =  Rcpp::seq(maxdistr + 3, maxdistr + eps_maxK + 2);
+
   newmaxK =  Rcpp::sample(maxK_id, 1, false, prob_maxK)[0] ;
   ratio = exp( logpost_maxx(newmaxK, 
                              hyp_maxK1, hyp_maxK2, hyp_maxK3,
@@ -446,10 +440,11 @@ Rcpp::List mix_sampler(const arma::vec& y, const arma::vec& g,
                              alpha,
                              clusterD_size,
                              maxdistr) ) ;
+//  Rcout << "maxK old" << maxK << "\n" ;
   if(R::runif(0, 1) < ratio) oldmaxK = newmaxK ;
-  if(oldmaxK == maxdistr) {oldmaxK = oldmaxK + 1 ;}
-  if(oldmaxK > 2 * J) {oldmaxK = 2 * J ;}
+  if(oldmaxK > 3 * J) {oldmaxK = 3 * J ;}
   maxK = oldmaxK ;  
+//  Rcout << "maxK new" << maxK << "\n" ;
 
 
   // step 7: sample the number of components on the observations

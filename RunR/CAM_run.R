@@ -181,7 +181,7 @@ barplot(table(apply(run$A[,-burnin], 2, function(x) length(which(x>0))+1 )))
 #maxx = max(apply(run$A, 2, function(x) max(which(x>0)) ))
 #t(run$A[1:maxx,100:120]) 
 
-burnin = 1:2700
+burnin = 1:2500
 AA = matrix(0,length(run$b[-burnin]),n)
 for(i in 1:length(run$b[-burnin]))
 {
@@ -201,7 +201,7 @@ sum(sapply(times, function(x) !(x %in% spp))) / (n-length(spp)) ### falsi positi
 AA[,which(est_spikes == 0)] = 0
 barplot(table( apply(AA, 1, function(x) length(unique(x))) ))
 
-A_ind = AA[apply(AA, 1, function(x) length(unique( x )))==7,]
+A_ind = AA[apply(AA, 1, function(x) length(unique( x )))==8,]
 dataa = data.frame(A = A_ind[A_ind>0])
 ggplot(data = dataa, aes(x = A)) + 
   geom_histogram(bins = 35, aes(y = ..density..), col = "#00AFBB", fill = "#00AFBB", alpha = 0.3) +   

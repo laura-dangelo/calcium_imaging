@@ -101,9 +101,9 @@ clus = kmeans(y[y>0.5], centers = 5)
 
 A_start = rep(0,100)
 # A_start[2:8] = c(0.3, 0.5, 0.7, 1, 1.2, 1.5, 1.9)
-AA = c(group1$A, group2$A, group3$A, group4$A)
-
-cluster = rep(0, length(y))
+# AA = c(group1$A, group2$A, group3$A, group4$A)
+# 
+# cluster = rep(0, length(y))
 # cluster[AA == A_start[2]] = 1
 # cluster[AA == A_start[3]] = 2
 # cluster[AA == A_start[4]] = 3
@@ -134,7 +134,7 @@ run = calcium_gibbs(Nrep = nrep,
                     tau2_start = 0.00001, 
                     p_start = 0.001, 
                     alpha_start = 3, beta_start = 3,
-                    maxK_start = 5,
+                    maxK_start = 7,
                     maxL_start = 20,
                     c0 = 0, varC0 = 0.1, 
                     hyp_A1 = 7, hyp_A2 = 10, 
@@ -145,16 +145,14 @@ run = calcium_gibbs(Nrep = nrep,
                     hyp_p1 = 1, hyp_p2 = 999,
                     hyp_alpha1 = 6, hyp_alpha2 = 3,
                     hyp_beta1 = 6, hyp_beta2 = 3,
-                    hyp_maxK1 = 2, hyp_maxK2 = 4, hyp_maxK3 = 3,
+                    hyp_maxK1 = 5, hyp_maxK2 = 4, hyp_maxK3 = 3,
                     hyp_maxL1 = 2, hyp_maxL2 = 4, hyp_maxL3 = 3,
                     eps_alpha = 0.7, eps_beta = 0.7,
                     eps_gamma = 0.005,
                     eps_A = 0.002,
-                    eps_maxK = 4, eps_maxL = 10)
+                    eps_maxK = 7, eps_maxL = 10)
 
   
-
-
 #plot(function(x) dgamma(x, 10, 7), 0, 3)
 # burnin = 1:500
 # run$calcium = run$calcium[,-burnin]
@@ -239,7 +237,7 @@ barplot(table(apply(run$clusterD, 2, function(x) length(unique(x)) ))) # quanti 
 
 # analizzo il caso = 3
 mat_clusterD = matrix(NA, J, J)
-ind3 = which( apply(run$clusterD, 2, function(x) length(unique(x)) ) ==2 ) # <-- qui metti quanti cluster vuoi vedere
+ind3 = which( apply(run$clusterD, 2, function(x) length(unique(x)) ) ==3 ) # <-- qui metti quanti cluster vuoi vedere
 mat_heatmap = expand.grid(J1 = unique(g),
                           J2 = unique(g))
 for(i in 1:J)
