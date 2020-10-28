@@ -4,7 +4,7 @@ library(ggplot2)
 library(viridis)
 
 # sourceCpp('./SourceCPP/calcium_CAM.cpp')
-sourceCpp('./SourceCPP/calcium_CAM_gMFM.cpp')
+sourceCpp('./SourceCPP/calcium_nested_gMFM.cpp')
 
 ## mixture ##
 sim_data <- function(n, sigma2, tau2, time_spike, b, gamma, prob, par)
@@ -42,11 +42,12 @@ times_spike <- function(n, ns, p1, p2)
 set.seed(1234)
 sigma2 = 0.004
 tau2 = 0.00001
-n1 = 4000
-n2 = 2500
-n3 = 5000
-n4 = 3500
-n5 = 2000
+
+n1 = 5000
+n2 = 4500
+n3 = 7000
+n4 = 4500
+n5 = 4000
 gamma = 0.6
 b = 0
 
@@ -60,14 +61,14 @@ spp = which(spp == 1)
 length(spp)
 
 
-prob1 = rep(0.2, 5)
-par1 = c(0.5, 0.9, 1.5, 1.9, 2.5)
+prob1 = rep(0.25, 4)
+par1 = c(0.3, 0.5, 1, 1.2)
 
 prob2 = rep(0.25, 4)
-par2 = c(0.7, 0.9, 1.5, 2.2)
+par2 = c(0.5, 0.7, 1.2, 1.5)
 
 prob3 = c(0.33, 0.33, 0.34)
-par3 = c(0.5, 1.2, 1.9)
+par3 = c(0.3, 1.2, 1.9)
 
 group1 <- sim_data(n = n1, sigma2 = sigma2, tau2 = tau2, time_spike = spp[spp<=n1],
                  gamma = gamma, b = b,
@@ -96,51 +97,53 @@ g = c(rep(1,n1), rep(2,n2), rep(3,n3), rep(4,n4), rep(5,n5))
 plot(y, type = "l")
 
 A_start = rep(0,100)
-# A_start[2:6] = c(0.5, 0.9, 1.5, 1.9, 2.5)
-# AA = c(group1$A, group2$A, group3$A, group4$A)
+A_start[2:8] = c(0.3, 0.5, 0.7, 1, 1.2, 1.5, 1.9)
+AA = c(group1$A, group2$A, group3$A, group4$A)
 
 cluster = rep(0, length(y))
-# cluster[AA == A_start[2]] = 1
-# cluster[AA == A_start[3]] = 2
-# cluster[AA == A_start[4]] = 3
-# cluster[AA == A_start[5]] = 4
-# cluster[AA == A_start[6]] = 5
-
+cluster[AA == A_start[2]] = 1
+cluster[AA == A_start[3]] = 2
+cluster[AA == A_start[4]] = 3
+cluster[AA == A_start[5]] = 4
+cluster[AA == A_start[6]] = 5
+cluster[AA == A_start[7]] = 6
+cluster[AA == A_start[8]] = 7
 
 sum(length(spp))/length(y)
 
 n = length(y)
 J = length(unique(g))
-nrep = 3000
+nrep = 600
 set.seed(1234)
 
 run = calcium_gibbs(Nrep = nrep, 
                     y = y, g = g,
                     cal = c(0,y),
-                    clO = cluster, clD = c(1,2,3,4,5), 
+                    clO = cluster, clD = c(1,2,3,1,3), 
                     A_start = A_start,
                     b_start = 0,
                     gamma_start = 0.6, 
                     sigma2_start = 0.004, 
                     tau2_start = 0.00001, 
                     p_start = 0.001, 
-                    alpha = 30, beta_start = 1,
+                    alpha_start = 3, beta_start = 3,
+                    maxK_start = 5,
                     maxL_start = 20,
-                    max_xiK = 100, 
-                    kappa_D = 0.5, 
                     c0 = 0, varC0 = 0.1, 
-                    hyp_A1 = 10, hyp_A2 = 10, 
+                    hyp_A1 = 7, hyp_A2 = 10, 
                     hyp_b1 = 0, hyp_b2 = 1, 
                     hyp_sigma21 = 1000, hyp_sigma22 = 1, 
                     hyp_tau21 = 1000, hyp_tau22 = 1, 
                     hyp_gamma1 = 1, hyp_gamma2 = 1,
                     hyp_p1 = 1, hyp_p2 = 999,
+                    hyp_alpha1 = 6, hyp_alpha2 = 3,
                     hyp_beta1 = 6, hyp_beta2 = 3,
+                    hyp_maxK1 = 2, hyp_maxK2 = 4, hyp_maxK3 = 3,
                     hyp_maxL1 = 2, hyp_maxL2 = 4, hyp_maxL3 = 3,
-                    eps_beta = 1,
-                    eps_gamma = 0.007,
+                    eps_alpha = 0.7, eps_beta = 0.7,
+                    eps_gamma = 0.005,
                     eps_A = 0.002,
-                    eps_maxL = 10)
+                    eps_maxK = 4, eps_maxL = 10)
 
   
 
@@ -157,7 +160,7 @@ run = calcium_gibbs(Nrep = nrep,
 # run$p = run$p[-burnin]
 # save(run, file = "res_sim_1709_par4_low.Rdata")
 
-burnin = 1:2000
+burnin = 1:250
 plot(1:length(run$p[-burnin]), run$p[-burnin], type = "l")
 lines(1:length(run$p[-burnin]), cumsum(run$p[-burnin])/1:length(run$p[-burnin]), col =2)
 
@@ -173,12 +176,17 @@ lines(1:length(run$b[-burnin]), cumsum(run$b[-burnin])/1:length(run$b[-burnin]),
 plot(1:length(run$gamma[-burnin]), run$gamma[-burnin], type = "l", xlab = "iterazioni", ylab = "gamma")
 lines(1:length(run$gamma[-burnin]), cumsum(run$gamma[-burnin])/1:length(run$gamma[-burnin]), col =2)
 
+plot(1:length(run$alpha[-burnin]), run$alpha[-burnin], type = "l", xlab = "iterazioni", ylab = "alpha")
+lines(1:length(run$alpha[-burnin]), cumsum(run$alpha[-burnin])/1:length(run$alpha[-burnin]), col =2)
+
 plot(1:length(run$beta[-burnin]), run$beta[-burnin], type = "l", xlab = "iterazioni", ylab = "beta")
 lines(1:length(run$beta[-burnin]), cumsum(run$beta[-burnin])/1:length(run$beta[-burnin]), col =2)
 
 plot(1:length(run$maxL[-burnin]), run$maxL[-burnin], type = "l", xlab = "iterazioni", ylab = "maxL")
 lines(1:length(run$maxL[-burnin]), cumsum(run$maxL[-burnin])/1:length(run$maxL[-burnin]), col =2)
 
+plot(1:length(run$maxK[-burnin]), run$maxK[-burnin], type = "l", xlab = "iterazioni", ylab = "maxK")
+lines(1:length(run$maxK[-burnin]), cumsum(run$maxK[-burnin])/1:length(run$maxL[-burnin]), col =2)
 
 
 mean(run$sigma2[-burnin])
@@ -192,7 +200,7 @@ mean(run$gamma[-burnin])
 #apply(run$A, 2, function(x) length(which(x>0)) ) # numero di clusters sulle osservazioni
 barplot(table(apply(run$A[,-burnin], 2, function(x) length(which(x>0))+1 )))
 
-burnin = 1:2700
+burnin = 1:500
 AA = matrix(0,length(run$b[-burnin]),n)
 for(i in 1:length(run$b[-burnin]))
 {
@@ -203,18 +211,13 @@ est_spikes = colMeans(AA)
 est_spikes[which( apply(t(run$clusterO)[-burnin,], 2, function(x) mean(x != 0))<0.8)] = 0
 times = which(est_spikes>0)
 
-times
-spp
-
-#plot(1:length(AA[129,-burnin]), AA[129,-burnin], type = "l", xlab = "iterazioni", ylab = "gamma")
-
 sum(sapply(spp, function(x) !(x %in% times))) / length(spp)  ### spikes non identificati: falsi negativi
 sum(sapply(times, function(x) !(x %in% spp))) / (n-length(spp)) ### falsi positivi
 
 AA[,which(est_spikes == 0)] = 0
 barplot(table( apply(AA, 1, function(x) length(unique(x))) ))
 
-A_ind = AA[apply(AA, 1, function(x) length(unique( x )))==8,]
+A_ind = AA[apply(AA, 1, function(x) length(unique( x )))==9,]
 dataa = data.frame(A = A_ind[A_ind>0])
 ggplot(data = dataa, aes(x = A)) + 
   geom_histogram(bins = 35, aes(y = ..density..), col = "#00AFBB", fill = "#00AFBB", alpha = 0.3) +   
@@ -229,7 +232,7 @@ barplot(table(apply(run$clusterD, 2, function(x) length(unique(x)) ))) # quanti 
 
 # analizzo il caso = 3
 mat_clusterD = matrix(NA, J, J)
-ind3 = which( apply(run$clusterD, 2, function(x) length(unique(x)) ) ==2 ) # <-- qui metti quanti cluster vuoi vedere
+ind3 = which( apply(run$clusterD, 2, function(x) length(unique(x)) ) ==3 ) # <-- qui metti quanti cluster vuoi vedere
 mat_heatmap = expand.grid(J1 = unique(g),
                           J2 = unique(g))
 for(i in 1:J)
