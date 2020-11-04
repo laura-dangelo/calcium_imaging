@@ -1,0 +1,448 @@
+---
+title: "Scenario 2"
+subtitle: "Confronto tra CAM con DP e CAM finito con gMFM"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r, include=FALSE, echo=FALSE}
+library(ggplot2)
+library(viridis)
+require(gridExtra)
+load("/home/laura/Documents/Dottorato/2.06 Calcium imaging/calcium_imaging/calcium_imaging/scen2_res_gMFM.Rdata")
+load("/home/laura/Documents/Dottorato/2.06 Calcium imaging/calcium_imaging/calcium_imaging/scen2_res_DP.Rdata")
+load("/home/laura/Documents/Dottorato/2.06 Calcium imaging/calcium_imaging/calcium_imaging/y_scen2.Rdata")
+load("/home/laura/Documents/Dottorato/2.06 Calcium imaging/calcium_imaging/calcium_imaging/spp_scen2.Rdata")
+n1 = 5000
+n2 = 5000
+n3 = 5000
+n4 = 5000
+n5 = 5000
+n6 = 5000
+J = 6
+g = c(rep(1,n1), rep(2,n2), rep(3,n3), rep(4,n4), rep(5,n5), rep(6,n6))
+n = length(y)
+unip <- c(0.5, 0.8, 1.1, 1.4, 1.75, 1.9)
+```
+
+### Dati
+```
+# Numerosità:
+n1 = 5000
+n2 = 5000
+n3 = 5000
+n4 = 5000
+n5 = 5000
+n6 = 5000
+```
+
+```
+# Misture sugli spike: probabilità e parametri
+prob1 = rep(1, 3)/3
+par1 = c(0.4, 0.6, 0.9)
+
+prob2 = rep(0.25, 4)
+par2 = c(0.4, 0.75, 1.15, 1.5)
+
+prob3 = c(0.2, 0.4, 0.4)
+par3 = c(0.75, 1.5, 1.75)
+```
+Numero di clusters sulle osservazioni: 8 (7 spikes + assenza).
+
+I gruppi totali sono 6 (J), e i dati sono simulati dalle distribuzioni 1, 2, 3, 1, 1, 2.
+
+Numero di clusters sulle distribuzioni: 3.
+
+
+
+
+### Convergenza 
+Non ci sono problemi di convergenza in nessuno dei due casi. I punti iniziali sono gli stessi: ogni gruppo è assegnato a una distribuzione diversa. L'assegnazione iniziale dei cluster sulle osservazioni è ottenuta con kmeans sulle osservazioni con valore >0.5.
+
+#### DP
+```{r, echo=FALSE}
+burnin = 1:100
+par(mfrow = c(2,1), mar = c(2, 4, 4, 2) + 0.1)
+plot(1:length(run_DP$p[-burnin]), run_DP$p[-burnin], type = "l")
+lines(1:length(run_DP$p[-burnin]), cumsum(run_DP$p[-burnin])/1:length(run_DP$p[-burnin]), col =2)
+
+plot(1:length(run_DP$sigma2[-burnin]), run_DP$sigma2[-burnin], type = "l", xlab = "iterazioni", ylab = "sigma2")
+lines(1:length(run_DP$sigma2[-burnin]), cumsum(run_DP$sigma2[-burnin])/1:length(run_DP$sigma2[-burnin]), col =2)
+
+plot(1:length(run_DP$tau[-burnin]), run_DP$tau[-burnin], type = "l", xlab = "iterazioni", ylab = "tau2")
+lines(1:length(run_DP$tau[-burnin]), cumsum(run_DP$tau[-burnin])/1:length(run_DP$tau[-burnin]), col =2)
+
+plot(1:length(run_DP$b[-burnin]), run_DP$b[-burnin], type = "l", xlab = "iterazioni", ylab = "b")
+lines(1:length(run_DP$b[-burnin]), cumsum(run_DP$b[-burnin])/1:length(run_DP$b[-burnin]), col =2)
+
+plot(1:length(run_DP$gamma[-burnin]), run_DP$gamma[-burnin], type = "l", xlab = "iterazioni", ylab = "gamma")
+lines(1:length(run_DP$gamma[-burnin]), cumsum(run_DP$gamma[-burnin])/1:length(run_DP$gamma[-burnin]), col =2)
+
+par(mfrow = c(1,1), mar = c(5, 4, 4, 2) + 0.1)
+```
+
+
+#### Convergenza con gMFM
+```{r, echo=FALSE}
+burnin = 1:100
+par(mfrow = c(2,1), mar = c(2, 4, 4, 2) + 0.1)
+plot(1:length(run_gMFM$p[-burnin]), run_gMFM$p[-burnin], type = "l", ylab = "p")
+lines(1:length(run_gMFM$p[-burnin]), cumsum(run_gMFM$p[-burnin])/1:length(run_gMFM$p[-burnin]), col =2)
+
+plot(1:length(run_gMFM$sigma2[-burnin]), run_gMFM$sigma2[-burnin], type = "l", xlab = "iterazioni", ylab = "sigma2")
+lines(1:length(run_gMFM$sigma2[-burnin]), cumsum(run_gMFM$sigma2[-burnin])/1:length(run_gMFM$sigma2[-burnin]), col =2)
+
+plot(1:length(run_gMFM$tau[-burnin]), run_gMFM$tau[-burnin], type = "l", xlab = "iterazioni", ylab = "tau2")
+lines(1:length(run_gMFM$tau[-burnin]), cumsum(run_gMFM$tau[-burnin])/1:length(run_gMFM$tau[-burnin]), col =2)
+
+plot(1:length(run_gMFM$b[-burnin]), run_gMFM$b[-burnin], type = "l", xlab = "iterazioni", ylab = "b")
+lines(1:length(run_gMFM$b[-burnin]), cumsum(run_gMFM$b[-burnin])/1:length(run_gMFM$b[-burnin]), col =2)
+
+plot(1:length(run_gMFM$gamma[-burnin]), run_gMFM$gamma[-burnin], type = "l", xlab = "iterazioni", ylab = "gamma")
+lines(1:length(run_gMFM$gamma[-burnin]), cumsum(run_gMFM$gamma[-burnin])/1:length(run_gMFM$gamma[-burnin]), col =2)
+
+plot(1:length(run_gMFM$alpha[-burnin]), run_gMFM$alpha[-burnin], type = "l", xlab = "iterazioni", ylab = "alpha (distr)")
+lines(1:length(run_gMFM$alpha[-burnin]), cumsum(run_gMFM$alpha[-burnin])/1:length(run_gMFM$alpha[-burnin]), col =2)
+
+plot(1:length(run_gMFM$beta[-burnin]), run_gMFM$beta[-burnin], type = "l", xlab = "iterazioni", ylab = "beta (obs)")
+lines(1:length(run_gMFM$beta[-burnin]), cumsum(run_gMFM$beta[-burnin])/1:length(run_gMFM$beta[-burnin]), col =2)
+
+plot(1:length(run_gMFM$maxK[-burnin]), run_gMFM$maxK[-burnin], type = "l", xlab = "iterazioni", ylab = "maxK (distr)")
+lines(1:length(run_gMFM$maxK[-burnin]), cumsum(run_gMFM$maxK[-burnin])/1:length(run_gMFM$maxL[-burnin]), col =2)
+
+plot(1:length(run_gMFM$maxL[-burnin]), run_gMFM$maxL[-burnin], type = "l", xlab = "iterazioni", ylab = "maxL (obs)")
+lines(1:length(run_gMFM$maxL[-burnin]), cumsum(run_gMFM$maxL[-burnin])/1:length(run_gMFM$maxL[-burnin]), col =2)
+par(mfrow = c(1,1), mar = c(5, 4, 4, 2) + 0.1)
+```
+
+
+```{r, echo=FALSE}
+par(mfrow = c(1,2))
+burnin = 1:1800
+AA_DP = matrix(0,length(run_DP$b[-burnin]),n)
+for(i in 1:length(run_DP$b[-burnin]))
+{
+  ii = i + max(burnin)
+  AA_DP[i, t(run_DP$clusterO)[ii,] >0] = run_DP$A[run_DP$clusterO[run_DP$clusterO[,ii] >0,ii]+1,ii]
+}
+est_spikes_DP = colMeans(AA_DP) 
+est_spikes_DP[which( apply(t(run_DP$clusterO)[-burnin,], 2, function(x) mean(x != 0))<0.5)] = 0
+times_DP = which(est_spikes_DP>0)
+AA_DP[,which(est_spikes_DP == 0)] = 0
+
+AA_gMFM = matrix(0,length(run_gMFM$b[-burnin]),n)
+for(i in 1:length(run_gMFM$b[-burnin]))
+{
+  ii = i + max(burnin)
+  AA_gMFM[i, t(run_gMFM$clusterO)[ii,] >0] = run_gMFM$A[run_gMFM$clusterO[run_gMFM$clusterO[,ii] >0,ii]+1,ii]
+}
+est_spikes_gMFM = colMeans(AA_gMFM) 
+est_spikes_gMFM[which( apply(t(run_gMFM$clusterO)[-burnin,], 2, function(x) mean(x != 0))<0.5)] = 0
+times_gMFM = which(est_spikes_gMFM>0)
+AA_gMFM[,which(est_spikes_gMFM == 0)] = 0
+```
+
+
+#### Identificazione degli spikes
+```{r}
+# DP
+sum(sapply(spp, function(x) !(x %in% times_DP))) / length(spp)  ### spikes non identificati: falsi negativi
+sum(sapply(times_DP, function(x) !(x %in% spp))) / (n-length(spp)) ### falsi positivi
+
+# gMFM
+sum(sapply(spp, function(x) !(x %in% times_gMFM))) / length(spp)  ### spikes non identificati: falsi negativi
+sum(sapply(times_gMFM, function(x) !(x %in% spp))) / (n-length(spp)) ### falsi positivi
+```
+
+
+### Cluster sulle distribuzioni
+```{r, echo=FALSE}
+par(mfrow = c(1,2))
+burnin = 1:1500
+
+barplot(table(apply(run_DP$clusterD, 2, function(x) length(unique(x)) )), main = "DP") # quanti cluster di distribuzioni
+barplot(table(apply(run_gMFM$clusterD, 2, function(x) length(unique(x)) )), main = "gMFM") # quanti cluster di distribuzioni
+
+
+moda = as.numeric(attr(which.max(table(apply(run_DP$clusterD, 2, function(x) length(unique(x)) ))), "names"))
+mat_clusterD = matrix(NA, J, J)
+ind3 = which( apply(run_DP$clusterD, 2, function(x) length(unique(x)) ) ==moda ) 
+mat_heatmap = expand.grid(J1 = unique(g),
+                          J2 = unique(g))
+for(i in 1:J)
+{
+  for(j in 1:i)
+  {
+    mat_clusterD[i,j] = sum( apply(run_DP$clusterD[,ind3], 2, function(x) x[i] == x[j] ) )
+    mat_clusterD[j,i] = mat_clusterD[i,j] 
+  }
+}
+df_heat = data.frame(J1 = as.factor(mat_heatmap[,1]),
+                     J2 = as.factor(mat_heatmap[,2]),
+                     val = c(mat_clusterD)/mat_clusterD[1,1],
+                     lab = round( c(mat_clusterD)/mat_clusterD[1,1] , 3) )
+df_heat$lab[df_heat$J1==df_heat$J2] = 1:J
+df_heat$val[df_heat$J1==df_heat$J2] = NA
+
+plot1 = ggplot(data = df_heat) +
+  geom_tile( aes(x = J1, y = J2, fill = val)) +
+  geom_text(aes(x = J1, y = J2, label = lab), size=2.5) +
+  scale_fill_gradient(low = magma(3)[3], high = inferno(3)[2]) +
+  ylim(rev(levels(df_heat$J2))) 
+
+
+mat_clusterD = matrix(NA, J, J)
+ind3 = which( apply(run_gMFM$clusterD, 2, function(x) length(unique(x)) ) ==moda ) 
+mat_heatmap = expand.grid(J1 = unique(g),
+                          J2 = unique(g))
+for(i in 1:J)
+{
+  for(j in 1:i)
+  {
+    mat_clusterD[i,j] = sum( apply(run_gMFM$clusterD[,ind3], 2, function(x) x[i] == x[j] ) )
+    mat_clusterD[j,i] = mat_clusterD[i,j] 
+  }
+}
+df_heat = data.frame(J1 = as.factor(mat_heatmap[,1]),
+                     J2 = as.factor(mat_heatmap[,2]),
+                     val = c(mat_clusterD)/mat_clusterD[1,1],
+                     lab = round( c(mat_clusterD)/mat_clusterD[1,1] , 3) )
+df_heat$lab[df_heat$J1==df_heat$J2] = 1:J
+df_heat$val[df_heat$J1==df_heat$J2] = NA
+
+plot2 = ggplot(data = df_heat) +
+  geom_tile( aes(x = J1, y = J2, fill = val)) +
+  geom_text(aes(x = J1, y = J2, label = lab), size=2.5) +
+  scale_fill_gradient(low = magma(3)[3], high = inferno(3)[2]) +
+  ylim(rev(levels(df_heat$J2))) 
+
+grid.arrange(plot1, plot2, ncol=2)
+```
+
+### Parametri dei cluster
+
+#### gruppo 1
+```
+prob1 = rep(1, 3)/3
+par1 = c(0.4, 0.6, 0.9)
+```
+```{r, echo=FALSE}
+int = 1:n1
+par(mfrow=c(1,2))
+subsetAA_DP = AA_DP[,int]
+barplot(table( apply(subsetAA_DP, 1, function(x) length(unique(x))) ))
+moda_DP = as.numeric(attr(which.max(table( apply(subsetAA_DP, 1, function(x) length(unique(x))) )), "names"))
+
+subsetAA_gMFM = AA_gMFM[,int]
+barplot(table( apply(subsetAA_gMFM, 1, function(x) length(unique(x))) ))
+moda_gMFM = as.numeric(attr(which.max(table( apply(subsetAA_gMFM, 1, function(x) length(unique(x))) )), "names"))
+```
+
+```{r, echo=FALSE}
+A_ind_DP = subsetAA_DP[apply(subsetAA_DP, 1, function(x) length(unique( x )))== moda_DP,]
+datAA_DP = data.frame(A = A_ind_DP[A_ind_DP>0])
+plot3 = ggplot(data = datAA_DP, aes(x = A)) + 
+          geom_histogram(bins = 35, aes(y = ..density..), col = "#00AFBB", fill = "#00AFBB", alpha = 0.3) +   
+          stat_density(aes(y = ..density..), fill = 1, alpha = 0, col = 1) + 
+          theme_bw() +
+          scale_x_continuous(breaks = c(0, 0.4, 0.6, 0.9, 1, 1.5) )
+
+
+A_ind_gMFM = subsetAA_gMFM[apply(subsetAA_gMFM, 1, function(x) length(unique( x )))== moda_gMFM,]
+datAA_gMFM = data.frame(A = A_ind_gMFM[A_ind_gMFM>0])
+plot4 = ggplot(data = datAA_gMFM, aes(x = A)) + 
+          geom_histogram(bins = 35, aes(y = ..density..), col = "#00AFBB", fill = "#00AFBB", alpha = 0.3) +   
+          stat_density(aes(y = ..density..), fill = 1, alpha = 0, col = 1) + 
+          theme_bw() +
+          scale_x_continuous(breaks = c(0, 0.4, 0.6, 0.9, 1, 1.5) )
+grid.arrange(plot3, plot4, ncol=2)
+```
+
+#### gruppo 2
+```
+prob2 = rep(0.25, 4)
+par2 = c(0.4, 0.75, 1.15, 1.5)
+```
+```{r, echo=FALSE}
+int = n1:(n1+n2)
+
+par(mfrow=c(1,2))
+subsetAA_DP = AA_DP[,int]
+barplot(table( apply(subsetAA_DP, 1, function(x) length(unique(x))) ))
+moda_DP = as.numeric(attr(which.max(table( apply(subsetAA_DP, 1, function(x) length(unique(x))) )), "names"))
+
+subsetAA_gMFM = AA_gMFM[,int]
+barplot(table( apply(subsetAA_gMFM, 1, function(x) length(unique(x))) ))
+moda_gMFM = as.numeric(attr(which.max(table( apply(subsetAA_gMFM, 1, function(x) length(unique(x))) )), "names"))
+
+A_ind = subsetAA_DP[apply(subsetAA_DP, 1, function(x) length(unique( x )))== moda_DP,]
+datAA_DP = data.frame(A = A_ind[A_ind>0])
+plot1 = ggplot(data = datAA_DP, aes(x = A)) + 
+          geom_histogram(bins = 35, aes(y = ..density..), col = "#00AFBB", fill = "#00AFBB", alpha = 0.3) +   
+          stat_density(aes(y = ..density..), fill = 1, alpha = 0, col = 1) + 
+          theme_bw() +
+          scale_x_continuous(breaks = c(0.4, 0.75, 1, 1.15, 1.5, 1.75, 2) )
+
+
+A_ind = subsetAA_gMFM[apply(subsetAA_gMFM, 1, function(x) length(unique( x )))== moda_gMFM,]
+datAA_gMFM = data.frame(A = A_ind[A_ind>0])
+plot2 = ggplot(data = datAA_gMFM, aes(x = A)) + 
+          geom_histogram(bins = 35, aes(y = ..density..), col = "#00AFBB", fill = "#00AFBB", alpha = 0.3) +   
+          stat_density(aes(y = ..density..), fill = 1, alpha = 0, col = 1) + 
+          theme_bw() +
+          scale_x_continuous(breaks = c(0.4, 0.75, 1, 1.15, 1.5, 1.75, 2) )
+grid.arrange(plot1, plot2, ncol=2)
+```
+
+#### gruppo 3
+```
+prob3 = c(0.2, 0.4, 0.4)
+par3 = c(0.75, 1.5, 1.75)
+```
+```{r, echo=FALSE}
+int = (n1+n2):(n1+n2+n3)
+
+par(mfrow=c(1,2))
+subsetAA_DP = AA_DP[,int]
+barplot(table( apply(subsetAA_DP, 1, function(x) length(unique(x))) ))
+moda_DP = as.numeric(attr(which.max(table( apply(subsetAA_DP, 1, function(x) length(unique(x))) )), "names"))
+
+subsetAA_gMFM = AA_gMFM[,int]
+barplot(table( apply(subsetAA_gMFM, 1, function(x) length(unique(x))) ))
+moda_gMFM = as.numeric(attr(which.max(table( apply(subsetAA_gMFM, 1, function(x) length(unique(x))) )), "names"))
+
+A_ind = subsetAA_DP[apply(subsetAA_DP, 1, function(x) length(unique( x )))== moda_DP,]
+datAA_DP = data.frame(A = A_ind[A_ind>0])
+plot1 = ggplot(data = datAA_DP, aes(x = A)) + 
+          geom_histogram(bins = 35, aes(y = ..density..), col = "#00AFBB", fill = "#00AFBB", alpha = 0.3) +   
+          stat_density(aes(y = ..density..), fill = 1, alpha = 0, col = 1) + 
+          theme_bw() +
+          scale_x_continuous(breaks = c(0, 0.5, 0.75, 1, 1.5, 1.75, 2) )
+
+
+A_ind = subsetAA_gMFM[apply(subsetAA_gMFM, 1, function(x) length(unique( x )))== moda_gMFM,]
+datAA_gMFM = data.frame(A = A_ind[A_ind>0])
+plot2 = ggplot(data = datAA_gMFM, aes(x = A)) + 
+          geom_histogram(bins = 35, aes(y = ..density..), col = "#00AFBB", fill = "#00AFBB", alpha = 0.3) +   
+          stat_density(aes(y = ..density..), fill = 1, alpha = 0, col = 1) + 
+          theme_bw() +
+          scale_x_continuous(breaks = c(0, 0.5, 0.75, 1, 1.5, 1.75, 2) )
+
+grid.arrange(plot1, plot2, ncol=2)
+```
+
+
+#### gruppo 4
+```
+prob1 = rep(1, 3)/3
+par1 = c(0.4, 0.6, 0.9)
+```
+```{r, echo=FALSE}
+int = (n1+n2+n3):(n1+n2+n3+n4)
+
+par(mfrow=c(1,2))
+subsetAA_DP = AA_DP[,int]
+barplot(table( apply(subsetAA_DP, 1, function(x) length(unique(x))) ))
+moda_DP = as.numeric(attr(which.max(table( apply(subsetAA_DP, 1, function(x) length(unique(x))) )), "names"))
+
+subsetAA_gMFM = AA_gMFM[,int]
+barplot(table( apply(subsetAA_gMFM, 1, function(x) length(unique(x))) ))
+moda_gMFM = as.numeric(attr(which.max(table( apply(subsetAA_gMFM, 1, function(x) length(unique(x))) )), "names"))
+
+A_ind = subsetAA_DP[apply(subsetAA_DP, 1, function(x) length(unique( x )))== moda_DP,]
+datAA_DP = data.frame(A = A_ind[A_ind>0])
+plot1 = ggplot(data = datAA_DP, aes(x = A)) + 
+          geom_histogram(bins = 35, aes(y = ..density..), col = "#00AFBB", fill = "#00AFBB", alpha = 0.3) +   
+          stat_density(aes(y = ..density..), fill = 1, alpha = 0, col = 1) + 
+          theme_bw() +
+          scale_x_continuous(breaks = c(0, 0.4, 0.6, 0.9, 1, 1.5) )
+
+
+A_ind = subsetAA_gMFM[apply(subsetAA_gMFM, 1, function(x) length(unique( x )))== moda_gMFM,]
+datAA_gMFM = data.frame(A = A_ind[A_ind>0])
+plot2 = ggplot(data = datAA_gMFM, aes(x = A)) + 
+          geom_histogram(bins = 35, aes(y = ..density..), col = "#00AFBB", fill = "#00AFBB", alpha = 0.3) +   
+          stat_density(aes(y = ..density..), fill = 1, alpha = 0, col = 1) + 
+          theme_bw() +
+          scale_x_continuous(breaks = c(0, 0.4, 0.6, 0.9, 1, 1.5) )
+
+grid.arrange(plot1, plot2, ncol=2)
+```
+
+#### gruppo 5
+```
+prob1 = rep(1, 3)/3
+par1 = c(0.4, 0.6, 0.9)
+```
+```{r, echo=FALSE}
+int = (n1+n2+n3+n4):(n1+n2+n3+n4+n5)
+
+par(mfrow=c(1,2))
+subsetAA_DP = AA_DP[,int]
+barplot(table( apply(subsetAA_DP, 1, function(x) length(unique(x))) ))
+moda_DP = as.numeric(attr(which.max(table( apply(subsetAA_DP, 1, function(x) length(unique(x))) )), "names"))
+
+subsetAA_gMFM = AA_gMFM[,int]
+barplot(table( apply(subsetAA_gMFM, 1, function(x) length(unique(x))) ))
+moda_gMFM = as.numeric(attr(which.max(table( apply(subsetAA_gMFM, 1, function(x) length(unique(x))) )), "names"))
+
+A_ind = subsetAA_DP[apply(subsetAA_DP, 1, function(x) length(unique( x )))== moda_DP,]
+datAA_DP = data.frame(A = A_ind[A_ind>0])
+plot1 = ggplot(data = datAA_DP, aes(x = A)) + 
+          geom_histogram(bins = 35, aes(y = ..density..), col = "#00AFBB", fill = "#00AFBB", alpha = 0.3) +   
+          stat_density(aes(y = ..density..), fill = 1, alpha = 0, col = 1) + 
+          theme_bw() +
+          scale_x_continuous(breaks = c(0, 0.4, 0.6, 0.9, 1, 1.5) )
+
+
+A_ind = subsetAA_gMFM[apply(subsetAA_gMFM, 1, function(x) length(unique( x )))== moda_gMFM,]
+datAA_gMFM = data.frame(A = A_ind[A_ind>0])
+plot2 = ggplot(data = datAA_gMFM, aes(x = A)) + 
+          geom_histogram(bins = 35, aes(y = ..density..), col = "#00AFBB", fill = "#00AFBB", alpha = 0.3) +   
+          stat_density(aes(y = ..density..), fill = 1, alpha = 0, col = 1) + 
+          theme_bw() +
+          scale_x_continuous(breaks = c(0, 0.4, 0.6, 0.9, 1, 1.5) )
+
+grid.arrange(plot1, plot2, ncol=2)
+```
+
+#### gruppo 6
+```
+prob2 = rep(0.25, 4)
+par2 = c(0.4, 0.75, 1.15, 1.5)
+```
+```{r, echo=FALSE}
+int = (n1+n2+n3+n4+n5):(n1+n2+n3+n4+n5+n6)
+
+par(mfrow=c(1,2))
+subsetAA_DP = AA_DP[,int]
+barplot(table( apply(subsetAA_DP, 1, function(x) length(unique(x))) ))
+moda_DP = as.numeric(attr(which.max(table( apply(subsetAA_DP, 1, function(x) length(unique(x))) )), "names"))
+
+subsetAA_gMFM = AA_gMFM[,int]
+barplot(table( apply(subsetAA_gMFM, 1, function(x) length(unique(x))) ))
+moda_gMFM = as.numeric(attr(which.max(table( apply(subsetAA_gMFM, 1, function(x) length(unique(x))) )), "names"))
+
+A_ind = subsetAA_DP[apply(subsetAA_DP, 1, function(x) length(unique( x )))== moda_DP,]
+datAA_DP = data.frame(A = A_ind[A_ind>0])
+plot1 = ggplot(data = datAA_DP, aes(x = A)) + 
+          geom_histogram(bins = 35, aes(y = ..density..), col = "#00AFBB", fill = "#00AFBB", alpha = 0.3) +   
+          stat_density(aes(y = ..density..), fill = 1, alpha = 0, col = 1) + 
+          theme_bw() +
+          scale_x_continuous(breaks = c(0.4, 0.75, 1, 1.15, 1.5, 1.75, 2) )
+
+
+A_ind = subsetAA_gMFM[apply(subsetAA_gMFM, 1, function(x) length(unique( x )))== moda_gMFM,]
+datAA_gMFM = data.frame(A = A_ind[A_ind>0])
+plot2 = ggplot(data = datAA_gMFM, aes(x = A)) + 
+          geom_histogram(bins = 35, aes(y = ..density..), col = "#00AFBB", fill = "#00AFBB", alpha = 0.3) +   
+          stat_density(aes(y = ..density..), fill = 1, alpha = 0, col = 1) + 
+          theme_bw() +
+          scale_x_continuous(breaks = c(0.4, 0.75, 1, 1.15, 1.5, 1.75, 2) )
+
+grid.arrange(plot1, plot2, ncol=2)
+```

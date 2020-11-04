@@ -506,7 +506,7 @@ Rcpp::List calcium_gibbs(int Nrep,
     arma::vec line(n) ; line = clusterO.col(i+1) ;
     double n0 = std::count(line.begin(), line.end(), 0) ;
       
-    out_p(i+1) = R::rbeta(hyp_p2 + n - n0, hyp_p1 + n0) ;
+    out_p(i+1) = R::rbeta(hyp_p1 + n - n0, hyp_p2 + n0) ;
     // if(out_p(i+1) > 0.4) { check = 1 ; }
     
     
