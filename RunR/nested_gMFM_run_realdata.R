@@ -11,10 +11,11 @@ length(y_real)
 rm(list = ("data"))
 plot(1:length(y_real), y_real, type = "l")
 str(y_real)
-
+n = length(y_real)
 
 
 g = rep(4, length(y_real))
+J = 4
 int = g
 stat_grat <- read.csv("../data/static_grating.csv", header = TRUE)
 
@@ -51,21 +52,6 @@ int[min(nat_movie$start):max(nat_movie$end)] = 3
 
 
 
-plotAllLayers <- function(df)
-{
-  p = ggplot(data=df, aes(x=x, y=y)) +
-    geom_line() +
-    scale_y_continuous(limits = range(y_real))
-  for(i in unique(int)[-1])
-  { 
-    p = p + 
-      geom_rect(data = df, aes(xmin = min(x[interval == i]), 
-                               xmax = max(x[interval == i]), 
-                               ymin = -5, 
-                               ymax = 5), fill = "yellow", alpha = 0.2) 
-  }
-  return(p)
-}
 
 df = data.frame(x = 1:n, y = y_real, g = g, interval = int)
 
@@ -92,17 +78,14 @@ ggplot(data = df) +
   scale_y_continuous(name = "Calcium level")
 
 
-n = length(y_real)
-nrep = 100
 
 out = list()
 out$calcium = matrix(c(0,y_real),length(y_real)+1, 1)
 out$clusterO = matrix(0, length(y_real), 1)
-out$clusterD = matrix(0, length(unique(g)), 1)
+out$clusterD = matrix(1:4, length(unique(g)), 1)
 out$A = matrix(0, 100, 1)
-out$AA = matrix(NA, length(y_real), 1)
 out$b = 0
-out$gamma = 0.5
+out$gamma = 0.6
 out$sigma2 = 0.001
 out$tau2 = 0.0003
 out$p = 0.001
@@ -111,6 +94,12 @@ out$beta = 0.5
 out$maxK = 6
 out$maxL = 15
 
+clus = kmeans(y_real[y_real>0.4], centers = 5)
+out$A[2:6,1] = c(clus$centers)
+out$clusterO[y_real>0.4,1] = clus$cluster
+
+
+nrep = 1000
 start <- Sys.time()
 run = calcium_gibbs(Nrep = nrep, 
                     y = y_real,
@@ -160,6 +149,7 @@ out$alpha = c(out$alpha, run$alpha)
 out$beta = c(out$beta, run$beta)
 out$maxK = c(out$maxK, run$maxK)
 out$maxL = c(out$maxL, run$maxL)
+out$p = c(out$p, run$p)
 
 
 # burnin = 1:400
@@ -178,4 +168,129 @@ out$maxL = c(out$maxL, run$maxL)
 
 
 # save(out, file = "res_realdata_051120.Rdata")
+
+
+
+
+burnin = 1:10
+plot(1:length(out$p[-burnin]), out$p[-burnin], type = "l")
+lines(1:length(out$p[-burnin]), cumsum(out$p[-burnin])/1:length(out$p[-burnin]), col =2)
+
+plot(1:length(out$sigma2[-burnin]), out$sigma2[-burnin], type = "l", xlab = "iterazioni", ylab = "sigma2")
+lines(1:length(out$sigma2[-burnin]), cumsum(out$sigma2[-burnin])/1:length(out$sigma2[-burnin]), col =2)
+
+plot(1:length(out$tau[-burnin]), out$tau[-burnin], type = "l", xlab = "iterazioni", ylab = "tau2")
+lines(1:length(out$tau[-burnin]), cumsum(out$tau[-burnin])/1:length(out$tau[-burnin]), col =2)
+
+plot(1:length(out$b[-burnin]), out$b[-burnin], type = "l", xlab = "iterazioni", ylab = "b")
+lines(1:length(out$b[-burnin]), cumsum(out$b[-burnin])/1:length(out$b[-burnin]), col =2)
+
+plot(1:length(out$gamma[-burnin]), out$gamma[-burnin], type = "l", xlab = "iterazioni", ylab = "gamma")
+lines(1:length(out$gamma[-burnin]), cumsum(out$gamma[-burnin])/1:length(out$gamma[-burnin]), col =2)
+
+plot(1:length(out$alpha[-burnin]), out$alpha[-burnin], type = "l", xlab = "iterazioni", ylab = "alpha")
+lines(1:length(out$alpha[-burnin]), cumsum(out$alpha[-burnin])/1:length(out$alpha[-burnin]), col =2)
+
+plot(1:length(out$beta[-burnin]), out$beta[-burnin], type = "l", xlab = "iterazioni", ylab = "beta")
+lines(1:length(out$beta[-burnin]), cumsum(out$beta[-burnin])/1:length(out$beta[-burnin]), col =2)
+
+plot(1:length(out$maxL[-burnin]), out$maxL[-burnin], type = "l", xlab = "iterazioni", ylab = "maxL")
+lines(1:length(out$maxL[-burnin]), cumsum(out$maxL[-burnin])/1:length(out$maxL[-burnin]), col =2)
+
+plot(1:length(out$maxK[-burnin]), out$maxK[-burnin], type = "l", xlab = "iterazioni", ylab = "maxK")
+lines(1:length(out$maxK[-burnin]), cumsum(out$maxK[-burnin])/1:length(out$maxL[-burnin]), col =2)
+
+
+barplot(table(apply(out$clusterO[,-burnin], 2, function(x) length(unique(x)) )))
+
+
+burnin = 1:600
+AA_gMFM = matrix(0,length(out$b[-burnin]),n)
+for(i in 1:length(out$b[-burnin]))
+{
+  ii = i + max(burnin)
+  AA_gMFM[i, t(out$clusterO)[ii,] >0] = out$A[out$clusterO[out$clusterO[,ii] >0,ii]+1,ii]
+}
+
+save(AA_gMFM, file = "scen3_AA_gMFM.Rdata")
+est_spikes = colMeans(AA_gMFM) 
+est_spikes[which( apply(t(out$clusterO)[-burnin,], 2, function(x) mean(x != 0))<0.5)] = 0
+times = which(est_spikes>0)
+
+sum(sapply(spp, function(x) !(x %in% times))) / length(spp)  ### spikes non identificati: falsi negativi
+sum(sapply(times, function(x) !(x %in% spp))) / (n-length(spp)) ### falsi positivi
+
+AA_gMFM[,which(est_spikes == 0)] = 0
+barplot(table( apply(AA_gMFM, 1, function(x) length(unique(x))) ))
+moda = as.numeric(attr(which.max(table( apply(AA_gMFM, 1, function(x) length(unique(x))) )), "names"))
+
+A_ind = AA_gMFM[apply(AA_gMFM, 1, function(x) length(unique( x )))==moda,]
+datAA_gMFM = data.frame(A = A_ind[A_ind>0])
+ggplot(data = datAA_gMFM, aes(x = A)) + 
+  geom_histogram(bins = 30, aes(y = ..density..), col = "#00AFBB", fill = "#00AFBB", alpha = 0.3) +   
+  stat_density(aes(y = ..density..), fill = 1, alpha = 0, col = 1) + 
+  theme_bw() +
+  scale_x_continuous(breaks = unip)
+
+
+
+
+
+
+#--------------------------------------------#
+int = 1:n1
+int = n1:(n1+n2)
+int = (n1+n2):(n1+n2+n3)
+int = (n1+n2+n3):(n1+n2+n3+n4)
+int = (n1+n2+n3+n4):(n1+n2+n3+n4+n5)
+int = (n1+n2+n3+n4+n5):(n1+n2+n3+n4+n5+n6)
+
+subsetAA = AA_gMFM[,int]
+
+plot(1:nrow(subsetAA), apply(subsetAA, 1, function(x) length(unique(x))) , type = "l", xlab = "iterazioni", ylab = "maxK")
+lines(1:length(out$maxK[-burnin]), cumsum(out$maxK[-burnin])/1:length(out$maxL[-burnin]), col =2)
+
+barplot(table( apply(subsetAA, 1, function(x) length(unique(x))) ))
+moda = as.numeric(attr(which.max(table( apply(subsetAA, 1, function(x) length(unique(x))) )), "names"))
+
+A_ind = subsetAA[apply(subsetAA, 1, function(x) length(unique( x )))== moda,]
+dataa = data.frame(A = A_ind[A_ind>0])
+ggplot(data = dataa, aes(x = A)) + 
+  geom_histogram(bins = 35, aes(y = ..density..), col = "#00AFBB", fill = "#00AFBB", alpha = 0.3) +   
+  stat_density(aes(y = ..density..), fill = 1, alpha = 0, col = 1) + 
+  theme_bw() +
+  scale_x_continuous(breaks = unip)
+#--------------------------------------------#
+
+
+
+
+barplot(table(apply(out$clusterD, 2, function(x) length(unique(x)) ))) # quanti cluster di distribuzioni
+moda = as.numeric(attr(which.max(table(apply(out$clusterD, 2, function(x) length(unique(x)) ))), "names"))
+
+mat_clusterD = matrix(NA, J, J)
+ind3 = which( apply(out$clusterD, 2, function(x) length(unique(x)) ) ==moda ) 
+mat_heatmap = expand.grid(J1 = unique(g),
+                          J2 = unique(g))
+for(i in 1:J)
+{
+  for(j in 1:i)
+  {
+    mat_clusterD[i,j] = sum( apply(out$clusterD[,ind3], 2, function(x) x[i] == x[j] ) )
+    mat_clusterD[j,i] = mat_clusterD[i,j] 
+  }
+}
+df_heat = data.frame(J1 = as.factor(mat_heatmap[,1]),
+                     J2 = as.factor(mat_heatmap[,2]),
+                     val = c(mat_clusterD)/mat_clusterD[1,1],
+                     lab = round( c(mat_clusterD)/mat_clusterD[1,1] , 3) )
+df_heat$lab[df_heat$J1==df_heat$J2] = 1:J
+df_heat$val[df_heat$J1==df_heat$J2] = NA
+
+ggplot(data = df_heat) +
+  geom_tile( aes(x = J1, y = J2, fill = val)) +
+  geom_text(aes(x = J1, y = J2, label = lab), size=2.5) +
+  scale_fill_gradient(low = magma(3)[3], high = inferno(3)[2]) +
+  ylim(rev(levels(df_heat$J2))) 
+
 
