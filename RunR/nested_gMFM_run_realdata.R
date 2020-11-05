@@ -286,7 +286,7 @@ ggplot(data = df_heat) +
 
 
 
-
+int = 1:n
 int = which(g==1)[which(g==1)<30000]
 int = which(g==2)
 int = which(g==3)
@@ -300,3 +300,20 @@ ggplot(data = dff) +
   theme(legend.position = "bottom") +
   scale_x_continuous(name = "Time") +
   scale_y_continuous(name = "Calcium level")
+
+
+
+ggplot(data = dff) +
+  geom_rect(data = df_rect, inherit.aes = FALSE,
+            aes(xmin = start, 
+                xmax = end, 
+                ymin = -Inf, 
+                ymax = Inf, fill = Stimulus), alpha = 0.12 ) +
+  scale_fill_manual(values = cols) +
+  geom_line(aes(x = x, y = y), col = "turquoise3", alpha = 0.8) +
+  geom_line(aes(x = x, y = AA)) +
+  theme_bw() +
+  theme(legend.position = "bottom") +
+  scale_x_continuous(name = "Time") +
+  scale_y_continuous(name = "Calcium level")
+
