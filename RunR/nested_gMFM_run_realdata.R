@@ -87,7 +87,9 @@ ggplot(data = df) +
   scale_fill_manual(values = cols) +
   geom_line(aes(x = x, y = y)) +
   theme_bw() +
-  theme(legend.position = "bottom")
+  theme(legend.position = "bottom") +
+  scale_x_continuous(name = "Time") +
+  scale_y_continuous(name = "Calcium level")
 
 
 n = length(y_real)
@@ -127,14 +129,12 @@ run = calcium_gibbs(Nrep = nrep,
                     maxK_start = c(out$maxK[length(out$b)]),
                     maxL_start = c(out$maxL[length(out$b)]),
                     c0 = 0, varC0 = 0.1,
-                    alpha = 1, m = 1,
                     hyp_A1 = 5, hyp_A2 = 7,
                     hyp_b1 = 0, hyp_b2 = 1,
                     hyp_sigma21 = 1000, hyp_sigma22 = 1,
                     hyp_tau21 = 1000, hyp_tau22 = 1,
                     hyp_gamma1 = 1, hyp_gamma2 = 1,
                     hyp_p1 = 1, hyp_p2 = 999,
-                    eps_gamma = 0.005,
                     hyp_alpha1 = 3, hyp_alpha2 = 3,
                     hyp_beta1 = 3, hyp_beta2 = 6,
                     hyp_maxK1 = 2, hyp_maxK2 = 4, hyp_maxK3 = 3,
