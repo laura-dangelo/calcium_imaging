@@ -1,8 +1,9 @@
 library(Rcpp)
 library(RcppDist)
 library(ggplot2)
-sourceCpp('./SourceCPP/calcium_nested_gMFM2.cpp')
 library(viridis)
+sourceCpp('./SourceCPP/calcium_nested_gMFM2.cpp')
+
 
 data <- read.csv("../data/cellula2.csv", header = FALSE)
 
@@ -242,19 +243,33 @@ int = which((g==3)|(g==2))
 length(times[times %in% int])
 length(times[times %in% int])/length(int)
 
-subsetAA = AA_gMFM[,int]
 
+intt = which(g==1)
+subsetAA = AA_gMFM[,intt]
 moda = as.numeric(attr(which.max(table( apply(subsetAA, 1, function(x) length(unique(x))) )), "names"))
-
 A_ind = subsetAA[apply(subsetAA, 1, function(x) length(unique( x )))== moda,]
 dataa = data.frame(A = A_ind[A_ind>0])
-ggplot(data = dataa, aes(x = A)) + 
+plot1 <- ggplot(data = dataa, aes(x = A)) + 
   geom_histogram(bins = 35, aes(y = ..density..), col = "#00AFBB", fill = "#00AFBB", alpha = 0.3) +   
   stat_density(aes(y = ..density..), fill = 1, alpha = 0, col = 1) + 
   theme_bw() +
   scale_x_continuous(limits=c(0.16,1.5), breaks = seq(0.2,1.4,by=0.2), name = "") + 
-  scale_y_continuous(name = "")
+  scale_y_continuous(name = "Density")
 
+intt = which((g==3)|(g==2))
+subsetAA = AA_gMFM[,intt]
+moda = as.numeric(attr(which.max(table( apply(subsetAA, 1, function(x) length(unique(x))) )), "names"))
+A_ind = subsetAA[apply(subsetAA, 1, function(x) length(unique( x )))== moda,]
+dataa = data.frame(A = A_ind[A_ind>0])
+plot2 <- ggplot(data = dataa, aes(x = A)) + 
+  geom_histogram(bins = 35, aes(y = ..density..), col = "#00AFBB", fill = "#00AFBB", alpha = 0.3) +   
+  stat_density(aes(y = ..density..), fill = 1, alpha = 0, col = 1) + 
+  theme_bw() +
+  scale_x_continuous(limits=c(0.16,1.5), breaks = seq(0.2,1.4,by=0.2), name = "A") + 
+  scale_y_continuous(name = "Density")
+
+require(gridExtra)
+grid.arrange(plot1, plot2, nrow=2)
 
 # tot spikes = 1476
 # group 1: 460 - 0.01018398
@@ -327,5 +342,5 @@ ggplot(data = dff) +
   theme_bw() +
   theme(legend.position = "bottom") +
   scale_x_continuous(name = "Time") +
-  scale_y_continuous(name = "Calcium level")
+  scale_y_continuous(name = "Calcium level") 
 
