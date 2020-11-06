@@ -237,6 +237,10 @@ int = which(g==1)
 int = which(g==2)
 int = which(g==3)
 int = which(g==4)
+int = which((g==1)|(g==2))
+
+length(times[times %in% int])
+length(times[times %in% int])/length(int)
 
 subsetAA = AA_gMFM[,int]
 
@@ -250,12 +254,29 @@ dataa = data.frame(A = A_ind[A_ind>0])
 ggplot(data = dataa, aes(x = A)) + 
   geom_histogram(bins = 35, aes(y = ..density..), col = "#00AFBB", fill = "#00AFBB", alpha = 0.3) +   
   stat_density(aes(y = ..density..), fill = 1, alpha = 0, col = 1) + 
+  theme_bw() +
+  scale_x_continuous(limits=c(0.1,1.5), breaks = seq(0.2,1.4,by=0.2), name = "A*") + 
+  scale_y_continuous(name = "")
+
+
+dataa = data.frame(A = A_ind[A_ind>=0])
+ggplot(data = dataa, aes(x = A)) + 
+  geom_histogram(bins = 35, aes(y = ..density..), col = "#00AFBB", fill = "#00AFBB", alpha = 0.3) +   
+  stat_density(aes(y = ..density..), fill = 1, alpha = 0, col = 1) + 
   theme_bw() 
+
+
+
+# tot spikes = 1476
+# group 1: 460 - 0.01018398
+# group 2: 829 - 0.01851397 - media 1 e 2 è 0.01433082
+# group 3: 186 - 0.02059801
+# group 4: 1
 #--------------------------------------------#
 
 
 
-
+burnin = 1:800
 barplot(table(apply(out$clusterD[,-burnin], 2, function(x) length(unique(x)) ))) # quanti cluster di distribuzioni
 moda = as.numeric(attr(which.max(table(apply(out$clusterD[,-burnin], 2, function(x) length(unique(x)) ))), "names"))
 
@@ -272,27 +293,29 @@ for(i in 1:J)
   }
 }
 df_heat = data.frame(J1 = as.factor(mat_heatmap[,1]),
-                     J2 = as.factor(mat_heatmap[,2]),
+                     Group = as.factor(mat_heatmap[,2]),
                      val = c(mat_clusterD)/mat_clusterD[1,1],
                      lab = round( c(mat_clusterD)/mat_clusterD[1,1] , 3) )
-df_heat$lab[df_heat$J1==df_heat$J2] = 1:J
-df_heat$val[df_heat$J1==df_heat$J2] = NA
+df_heat$lab[df_heat$J1==df_heat$Group] = 1:J
+df_heat$val[df_heat$J1==df_heat$Group] = NA
 
 ggplot(data = df_heat) +
-  geom_tile( aes(x = J1, y = J2, fill = val)) +
-  geom_text(aes(x = J1, y = J2, label = lab), size=2.5) +
+  geom_tile( aes(x = J1, y = Group, fill = val)) +
+  geom_text(aes(x = J1, y = Group, label = lab), size=2.5) +
   scale_fill_gradient(low = magma(3)[3], high = inferno(3)[2]) +
-  ylim(rev(levels(df_heat$J2))) 
+  ylim(rev(levels(df_heat$Group))) +
+  scale_x_discrete(name = "Group") +
+  theme(legend.title = element_blank())
 
 
 
-int = 1:n
-int = which(g==1)[which(g==1)<30000]
-int = which(g==2)
-int = which(g==3)
-int = which(g==4)
+interval = 1:n
+interval = which(g==1)[which(g==1)<30000]
+interval = which(g==2)
+interval = which(g==3)
+interval = which(g==4)
 
-dff = data.frame(x = (1:n)[int], y = y_real[int], AA = colMeans(AA_gMFM)[int])
+dff = data.frame(x = (1:n)[interval], y = y_real[interval], AA = colMeans(AA_gMFM)[interval])
 ggplot(data = dff) +
   geom_line(aes(x = x, y = y), col = "turquoise") +
   geom_line(aes(x = x, y = AA)) +
@@ -310,8 +333,8 @@ ggplot(data = dff) +
                 ymin = -Inf, 
                 ymax = Inf, fill = Stimulus), alpha = 0.12 ) +
   scale_fill_manual(values = cols) +
-  geom_line(aes(x = x, y = y), col = "turquoise3", alpha = 0.8) +
-  geom_line(aes(x = x, y = AA)) +
+  geom_line(aes(x = x, y = y), size = 0.8) +
+  geom_line(aes(x = x, y = AA), col = "gold") +
   theme_bw() +
   theme(legend.position = "bottom") +
   scale_x_continuous(name = "Time") +
