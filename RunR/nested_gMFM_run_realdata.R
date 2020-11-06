@@ -237,16 +237,13 @@ int = which(g==1)
 int = which(g==2)
 int = which(g==3)
 int = which(g==4)
-int = which((g==1)|(g==2))
+int = which((g==3)|(g==2))
 
 length(times[times %in% int])
 length(times[times %in% int])/length(int)
 
 subsetAA = AA_gMFM[,int]
 
-plot(1:nrow(subsetAA), apply(subsetAA, 1, function(x) length(unique(x))) , type = "l", xlab = "iterazioni", ylab = "maxK")
-
-barplot(table( apply(subsetAA, 1, function(x) length(unique(x))) ))
 moda = as.numeric(attr(which.max(table( apply(subsetAA, 1, function(x) length(unique(x))) )), "names"))
 
 A_ind = subsetAA[apply(subsetAA, 1, function(x) length(unique( x )))== moda,]
@@ -255,22 +252,14 @@ ggplot(data = dataa, aes(x = A)) +
   geom_histogram(bins = 35, aes(y = ..density..), col = "#00AFBB", fill = "#00AFBB", alpha = 0.3) +   
   stat_density(aes(y = ..density..), fill = 1, alpha = 0, col = 1) + 
   theme_bw() +
-  scale_x_continuous(limits=c(0.1,1.5), breaks = seq(0.2,1.4,by=0.2), name = "A*") + 
+  scale_x_continuous(limits=c(0.16,1.5), breaks = seq(0.2,1.4,by=0.2), name = "") + 
   scale_y_continuous(name = "")
-
-
-dataa = data.frame(A = A_ind[A_ind>=0])
-ggplot(data = dataa, aes(x = A)) + 
-  geom_histogram(bins = 35, aes(y = ..density..), col = "#00AFBB", fill = "#00AFBB", alpha = 0.3) +   
-  stat_density(aes(y = ..density..), fill = 1, alpha = 0, col = 1) + 
-  theme_bw() 
-
 
 
 # tot spikes = 1476
 # group 1: 460 - 0.01018398
-# group 2: 829 - 0.01851397 - media 1 e 2 è 0.01433082
-# group 3: 186 - 0.02059801
+# group 2: 829 - 0.01851397 
+# group 3: 186 - 0.02059801 -- media 0.1886
 # group 4: 1
 #--------------------------------------------#
 
@@ -282,8 +271,8 @@ moda = as.numeric(attr(which.max(table(apply(out$clusterD[,-burnin], 2, function
 
 mat_clusterD = matrix(NA, J, J)
 ind3 = which( apply(out$clusterD[,-burnin], 2, function(x) length(unique(x)) ) ==moda ) 
-mat_heatmap = expand.grid(J1 = unique(g),
-                          J2 = unique(g))
+mat_heatmap = expand.grid(J1 = 1:4,
+                          J2 = 1:4)
 for(i in 1:J)
 {
   for(j in 1:i)
