@@ -147,8 +147,8 @@ double log_prod_frac(int maxL,
                  int maxlabel)
 {
   double out ;
-  arma::vec tmp(maxlabel + 1) ;
-  for(int h = 0; h < maxlabel + 1; h ++)
+  arma::vec tmp(maxlabel ) ;
+  for(int h = 0; h < maxlabel ; h ++)
   {
     tmp(h) = lgamma( clusterO_size(h) + beta/maxL ) - lgamma( 1 + beta/maxL ) ;
   }
@@ -175,7 +175,7 @@ double logpost_beta(double beta,
                     double & hyp_beta1, double & hyp_beta2,
                     int & T,
                     const arma::vec& clusterO_size,
-                    int & maxlabel,
+                    int maxlabel,
                     int maxL)
 {
   double out ;
@@ -214,12 +214,12 @@ double logprior_maxL2(int maxL, double hyp_maxL1,
 
 // log-posterior for MH step on maxL
 double logpost_maxL(int maxL, 
-                    double & hyp_maxL1, 
-                    double & hyp_maxL2, 
-                    double & hyp_maxL3, 
+                    double hyp_maxL1, 
+                    double hyp_maxL2, 
+                    double hyp_maxL3, 
                     double beta,
-                    const arma::vec& clusterO_size,
-                    int & maxlabel)
+                    const arma::vec clusterO_size,
+                    int maxlabel)
 {
   double out ;
   out = logprior_maxL2(maxL, hyp_maxL1, hyp_maxL2, hyp_maxL3) + maxlabel * log(beta) + lgamma(maxL + 1) - maxlabel * log(maxL) - 
@@ -332,37 +332,7 @@ Rcpp::List mix_sampler(const arma::vec& y, const arma::vec& g,
   // step 4: sample the distributional cluster indicator
   NumericVector probK(maxK) ;
   IntegerVector clusterD_id =  Rcpp::seq(1, maxK);
-  
-  for(int j = 0; j < J; j++)
-  {
-    arma::uvec ind_t = find(g == (j+1)) ;
-    arma::vec mixdens(ind_t.n_elem) ;
-    
-    for(int k = 0; k < maxK; k++)
-    {
-      probK[k] = -9999 ;
-      if( u_D(j) < xi_D(k) )
-      {
-        arma::vec omega_col = omega_lk.col(k) ;
-        for(int t = 0; t < ind_t.n_elem; t++)
-        {
-          arma::vec comp(maxL) ;
-          for(int l = 0; l < maxL; l++)
-          {
-            comp(l) = omega_col(l) * R::dnorm(y(ind_t(t)) - b - gamma * cc(ind_t(t)) - A(l), 0, std::sqrt(sigma2 + tau2), false) ;
-          }
-          mixdens(t) = log( arma::accu(comp) ) ;
-        }
-        
-        probK[k] =  log( pi_k(k) ) - log( xi_D(k) ) + arma::accu(mixdens) ;
-      }
-    }
-    probK =  probK - max(probK)  ;
-    probK =  exp(probK)  ;
-    clusterD(j) = Rcpp::sample(clusterD_id, 1, false, probK )[0] ;
-  } 
 
-  /*
   for(int j = 0; j < J; j++)
   {
     arma::uvec ind_t = find(g == (j+1)) ;
@@ -377,7 +347,8 @@ Rcpp::List mix_sampler(const arma::vec& y, const arma::vec& g,
         for(int t = 0; t < ind_t.n_elem; t++)
         {
           int cl = clusterO( ind_t(t) ) ;
-          mixdens(t) = log( omega_col(cl) ) + R::dnorm(y(ind_t(t)) - b - gamma * cc(ind_t(t)) - A(cl), 0, std::sqrt(sigma2 + tau2), true) ;
+          mixdens(t) = log( omega_col(cl) ) + 
+            R::dnorm(y(ind_t(t)) - b - gamma * cc(ind_t(t)) - A(cl), 0, std::sqrt(sigma2 + tau2), true) ;
         }
         
         probK[k] =  log( pi_k(k) ) - log( xi_D(k) ) + arma::accu(mixdens) ;
@@ -387,16 +358,18 @@ Rcpp::List mix_sampler(const arma::vec& y, const arma::vec& g,
     probK =  exp(probK)  ;
     clusterD(j) = Rcpp::sample(clusterD_id, 1, false, probK )[0] ;
   } 
-  */
+  
   
   // step 5: sample the observational cluster indicator
+  
   NumericVector probL(maxL) ;
   IntegerVector clusterO_id = Rcpp::seq(0, maxL-1) ;
   for(int t = 0; t < T; t++)
   {
     for(int l = 0; l < maxL; l++)
     {
-      probL[l] = omega_lk( l, clusterD(g(t)-1) -1 ) * R::dnorm(y(t) - b - gamma * cc(t), A(l), std::sqrt(sigma2 + tau2), false) ;
+      probL[l] = omega_lk( l, clusterD(g(t)-1) -1 ) * 
+        R::dnorm(y(t) - b - gamma * cc(t), A(l), std::sqrt(sigma2 + tau2), false) ;
     }
      
     clusterO(t) = Rcpp::sample(clusterO_id, 1, false, probL)[0] ;
@@ -470,16 +443,16 @@ Rcpp::List mix_sampler(const arma::vec& y, const arma::vec& g,
   IntegerVector maxL_id =  Rcpp::seq(maxlabel + 1, maxlabel + eps_maxL);
   
   newmaxL =  Rcpp::sample(maxL_id, 1, false, prob_maxL)[0] ;
-  ratio = exp( logpost_maxL(newmaxL, 
+  ratio = exp( logpost_maxL(newmaxL + 1, 
                             hyp_maxL1, hyp_maxL2, hyp_maxL3,
                             beta,
                             clusterO_size,
-                            maxlabel) -
-                logpost_maxL(oldmaxL, 
-                             hyp_maxL1, hyp_maxL2, hyp_maxL3,
+                            maxlabel + 1) -
+              logpost_maxL(oldmaxL + 1, 
+                            hyp_maxL1, hyp_maxL2, hyp_maxL3,
                             beta,
                             clusterO_size,
-                            maxlabel) ) ;
+                            maxlabel + 1) ) ;
   if(R::runif(0, 1) < ratio) oldmaxL = newmaxL ;
   int uu = A.n_elem ;
   maxL = std::min(oldmaxL, uu) ; 
@@ -495,14 +468,14 @@ Rcpp::List mix_sampler(const arma::vec& y, const arma::vec& g,
                             hyp_beta1, hyp_beta2,
                             T,
                             clusterO_size,
-                            maxlabel,
-                            maxL) -
+                            maxlabel + 1,
+                            maxL + 1) -
                 logpost_beta(oldbeta, 
                              hyp_beta1, hyp_beta2,
                              T,
                              clusterO_size,
-                             maxlabel,
-                             maxL) ) ;
+                             maxlabel + 1,
+                             maxL + 1) ) ;
   if(R::runif(0, 1) < ratio) oldbeta = newbeta ;
   beta = oldbeta ; 
   

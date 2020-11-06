@@ -28,12 +28,13 @@ barplot(table(apply(run_DP$clusterO[,-burnin], 2, function(x) length(unique(x)) 
 
 
 burnin = 1:1800
-AA = matrix(0,length(run_DP$b[-burnin]),n)
+AA_DP = matrix(0,length(run_DP$b[-burnin]),n)
 for(i in 1:length(run_DP$b[-burnin]))
 {
   ii = i + max(burnin)
-  AA[i, t(run_DP$clusterO)[ii,] >0] = run_DP$A[run_DP$clusterO[run_DP$clusterO[,ii] >0,ii]+1,ii]
+  AA_DP[i, t(run_DP$clusterO)[ii,] >0] = run_DP$A[run_DP$clusterO[run_DP$clusterO[,ii] >0,ii]+1,ii]
 }
+save(AA_DP, file = "scen3_AA_DP.Rdata")
 est_spikes = colMeans(AA) 
 est_spikes[which( apply(t(run_DP$clusterO)[-burnin,], 2, function(x) mean(x != 0))<0.5)] = 0
 times = which(est_spikes>0)

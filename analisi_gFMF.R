@@ -1,4 +1,4 @@
-burnin = 1:100
+burnin = 1:10
 plot(1:length(run_gMFM$p[-burnin]), run_gMFM$p[-burnin], type = "l")
 lines(1:length(run_gMFM$p[-burnin]), cumsum(run_gMFM$p[-burnin])/1:length(run_gMFM$p[-burnin]), col =2)
 
@@ -40,26 +40,28 @@ barplot(table(apply(run_gMFM$clusterO[,-burnin], 2, function(x) length(unique(x)
 
 
 burnin = 1:1800
-AA = matrix(0,length(run_gMFM$b[-burnin]),n)
+AA_gMFM = matrix(0,length(run_gMFM$b[-burnin]),n)
 for(i in 1:length(run_gMFM$b[-burnin]))
 {
   ii = i + max(burnin)
-  AA[i, t(run_gMFM$clusterO)[ii,] >0] = run_gMFM$A[run_gMFM$clusterO[run_gMFM$clusterO[,ii] >0,ii]+1,ii]
+  AA_gMFM[i, t(run_gMFM$clusterO)[ii,] >0] = run_gMFM$A[run_gMFM$clusterO[run_gMFM$clusterO[,ii] >0,ii]+1,ii]
 }
-est_spikes = colMeans(AA) 
+
+save(AA_gMFM, file = "scen3_AA_gMFM.Rdata")
+est_spikes = colMeans(AA_gMFM) 
 est_spikes[which( apply(t(run_gMFM$clusterO)[-burnin,], 2, function(x) mean(x != 0))<0.5)] = 0
 times = which(est_spikes>0)
 
 sum(sapply(spp, function(x) !(x %in% times))) / length(spp)  ### spikes non identificati: falsi negativi
 sum(sapply(times, function(x) !(x %in% spp))) / (n-length(spp)) ### falsi positivi
 
-AA[,which(est_spikes == 0)] = 0
-barplot(table( apply(AA, 1, function(x) length(unique(x))) ))
-moda = as.numeric(attr(which.max(table( apply(AA, 1, function(x) length(unique(x))) )), "names"))
+AA_gMFM[,which(est_spikes == 0)] = 0
+barplot(table( apply(AA_gMFM, 1, function(x) length(unique(x))) ))
+moda = as.numeric(attr(which.max(table( apply(AA_gMFM, 1, function(x) length(unique(x))) )), "names"))
 
-A_ind = AA[apply(AA, 1, function(x) length(unique( x )))==moda,]
-dataa = data.frame(A = A_ind[A_ind>0])
-ggplot(data = dataa, aes(x = A)) + 
+A_ind = AA_gMFM[apply(AA_gMFM, 1, function(x) length(unique( x )))==moda,]
+datAA_gMFM = data.frame(A = A_ind[A_ind>0])
+ggplot(data = datAA_gMFM, aes(x = A)) + 
   geom_histogram(bins = 30, aes(y = ..density..), col = "#00AFBB", fill = "#00AFBB", alpha = 0.3) +   
   stat_density(aes(y = ..density..), fill = 1, alpha = 0, col = 1) + 
   theme_bw() +
@@ -75,8 +77,10 @@ int = 1:n1
 int = n1:(n1+n2)
 int = (n1+n2):(n1+n2+n3)
 int = (n1+n2+n3):(n1+n2+n3+n4)
+int = (n1+n2+n3+n4):(n1+n2+n3+n4+n5)
+int = (n1+n2+n3+n4+n5):(n1+n2+n3+n4+n5+n6)
 
-subsetAA = AA[,int]
+subsetAA = AA_gMFM[,int]
 
 plot(1:nrow(subsetAA), apply(subsetAA, 1, function(x) length(unique(x))) , type = "l", xlab = "iterazioni", ylab = "maxK")
 lines(1:length(run_gMFM$maxK[-burnin]), cumsum(run_gMFM$maxK[-burnin])/1:length(run_gMFM$maxL[-burnin]), col =2)
