@@ -35,11 +35,11 @@ plot(1:length(run_gMFM$A[5,-burnin]), run_gMFM$A[6,-burnin], type = "l", xlab = 
 plot(1:length(run_gMFM$A[5,-burnin]), run_gMFM$A[7,-burnin], type = "l", xlab = "iterazioni", ylab = "A")
 plot(1:length(run_gMFM$A[5,-burnin]), run_gMFM$A[8,-burnin], type = "l", xlab = "iterazioni", ylab = "A")
 
-
+burnin = 1:1000
 barplot(table(apply(run_gMFM$clusterO[,-burnin], 2, function(x) length(unique(x)) )))
 
 
-burnin = 1:1800
+burnin = 1:2900
 AA_gMFM = matrix(0,length(run_gMFM$b[-burnin]),n)
 for(i in 1:length(run_gMFM$b[-burnin]))
 {
@@ -47,7 +47,7 @@ for(i in 1:length(run_gMFM$b[-burnin]))
   AA_gMFM[i, t(run_gMFM$clusterO)[ii,] >0] = run_gMFM$A[run_gMFM$clusterO[run_gMFM$clusterO[,ii] >0,ii]+1,ii]
 }
 
-save(AA_gMFM, file = "scen3_AA_gMFM.Rdata")
+# save(AA_gMFM, file = "scen3_AA_gMFM.Rdata")
 est_spikes = colMeans(AA_gMFM) 
 est_spikes[which( apply(t(run_gMFM$clusterO)[-burnin,], 2, function(x) mean(x != 0))<0.5)] = 0
 times = which(est_spikes>0)

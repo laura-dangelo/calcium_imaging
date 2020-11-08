@@ -43,13 +43,9 @@ times_spike <- function(n, ns, p1, p2)
 }
 
 
-#--------# #--------# #--------# #--------# #--------#
-#--------# #--------# Scenario 1 #--------# #--------#
-# distribuzioni ben separate, atomi ben distinti
-
-
-sigma2 = 0.004
-tau2 = 0.0001
+#----------# parametri
+sigma2 = 0.01
+tau2 = 0.0003
 n1 = n2 = n3 = n4 = n5 = n6 = 5000
 gamma = 0.8
 b = 0
@@ -70,7 +66,7 @@ m4 = 10
 pm1 = 0.17
 pm2 = 0.13
 pm3 = 0.13
-pm4 = 0.09
+pm4 = 0.14
 
 set.seed(1234)
 spp = c( times_spike(n1, m1, pp1, pm1)[1:n1], # clD1
@@ -87,19 +83,26 @@ sum(spp<n1)
 sum((spp>n1)&(spp<n1+n2))
 sum((spp>n1+n2)&(spp<n1+n2+n3))
 sum((spp>n1+n2+n3)&(spp<n1+n2+n3+n4))
+sum((spp>n1+n2+n3+n4)&(spp<n1+n2+n3+n4+n5))
+sum((spp>n1+n2+n3+n4+n5)&(spp<n1+n2+n3+n4+n5+n6))
 
-prob1 = rep(1, 3)/3
-par1 = c(0.5, 0.8, 1.1)
+prob1 = c(0.25, 0.25, 0.2, 0.15, 0.15)
+par1 = c(0.5, 1.2, 1.7, 2, 2.3)
 
 prob2 = rep(0.25, 4)
-par2 = c(0.8, 1.1, 1.4, 1.75)
+par2 = c(0.9, 1.2, 1.7, 2.6)
 
-prob3 = c(0.2, 0.4, 0.4)
-par3 = c(0.5, 1.4, 1.9)
+prob3 = c(0.4, 0.2, 0.4)
+par3 = c(0.5, 1.2, 2)
+
+prob4 = rep(1, 3)/3
+par4 = c(0.9, 1.7, 2)
+
 
 ### parametri: 
-unip <- c(0.5, 0.8, 1.1, 1.4, 1.75, 1.9)
-### n clus: 9 = (8 spike + 0)
+unip <- sort(unique(c(par1,par2,par3,par4)))
+unip
+length(unip)
 
 ### n distr: 3
 
@@ -115,12 +118,103 @@ group3 <- sim_data(n = n3, sigma2 = sigma2, tau2 = tau2, time_spike = spp[(spp>(
                    gamma = gamma, b = b,
                    prob = prob3, par = par3)
 
-group4 <- sim_data(n = n4, sigma2 = sigma2, tau2 = tau2, time_spike = spp[spp>(n1 + n2 + n3 )] - (n1 + n2 + n3 ),
+group4 <- sim_data(n = n4, sigma2 = sigma2, tau2 = tau2, time_spike = spp[(spp>(n1 + n2 + n3))&(spp<=(n1 + n2 + n3 + n4))] - (n1 + n2 + n3),
                    gamma = gamma, b = b,
-                   prob = prob3, par = par3)
+                   prob = prob4, par = par4)
 
-y = c(group1$y, group2$y, group3$y, group4$y)
+group5 <- sim_data(n = n5, sigma2 = sigma2, tau2 = tau2, time_spike = spp[(spp>(n1 + n2 + n3 + n4))&(spp<=(n1 + n2 + n3 + n4 + n5))] - (n1 + n2 + n3 + n4),
+                   gamma = gamma, b = b,
+                   prob = prob1, par = par1)
+
+group6 <- sim_data(n = n6, sigma2 = sigma2, tau2 = tau2, time_spike = spp[spp>(n1 + n2 + n3 + n4 + n5)] - (n1 + n2 + n3 + n4 + n5),
+                   gamma = gamma, b = b,
+                   prob = prob2, par = par2)
+
+
+
+y = c(group1$y, group2$y, group3$y, group4$y, group5$y, group6$y)
+g = c(rep(1,n1), rep(2,n2), rep(3,n3), rep(4,n4), rep(5,n5), rep(6,n6))
+plot(y, type = "l")
+
 # save(y, file="y_scen1.Rdata")
 # save(spp, file="spp_scen1.Rdata")
-g = c(rep(1,n1), rep(2,n2), rep(3,n3), rep(4,n4))
-plot(y, type = "l")
+
+
+
+
+clus = kmeans(y[(diff(y,1))>0.5], centers = 5)
+A_start = rep(0,50)
+A_start[2:6] = c(clus$centers)
+cluster = numeric(length(y))
+cluster[ (diff(y,1))>0.5] = clus$cluster
+
+n = length(y)
+J = length(unique(g))
+nrep = 3000
+burnin = 1:1000
+set.seed(1234)
+
+sourceCpp('./SourceCPP/calcium_nested_gMFM2.cpp')
+run_gMFM = calcium_gibbs(Nrep = nrep, 
+                         y = y, g = g,
+                         cal = c(0,y),
+                         clO = cluster, clD = c(1,2,3,4,5,6), 
+                         A_start = A_start,
+                         b_start = 0,
+                         gamma_start = 0.6, 
+                         sigma2_start = 0.004, 
+                         tau2_start = 0.0001, 
+                         p_start = 0.001, 
+                         alpha_start = 1, beta_start = 1,
+                         maxK_start = 7,
+                         maxL_start = 20,
+                         c0 = 0, varC0 = 0.1, 
+                         hyp_A1 = 4, hyp_A2 = 5, 
+                         hyp_b1 = 0, hyp_b2 = 1, 
+                         hyp_sigma21 = 1000, hyp_sigma22 = 1, 
+                         hyp_tau21 = 1000, hyp_tau22 = 1, 
+                         hyp_gamma1 = 1, hyp_gamma2 = 1,
+                         hyp_p1 = 1, hyp_p2 = 999,
+                         hyp_alpha1 = 3, hyp_alpha2 = 3,
+                         hyp_beta1 = 3, hyp_beta2 = 3,
+                         hyp_maxK1 = 4, hyp_maxK2 = 4, hyp_maxK3 = 3,
+                         hyp_maxL1 = 4, hyp_maxL2 = 4, hyp_maxL3 = 3,
+                         eps_alpha = 0.7, eps_beta = 0.7,
+                         eps_gamma = 0.005,
+                         eps_A = 0.002,
+                         eps_maxK = 7, eps_maxL = 10)
+
+# save(run_gMFM, file="scen1_res_gMFM.Rdata")
+barplot(table(apply(run_gMFM$clusterD, 2, function(x) length(unique(x)) ))) # quanti cluster di distribuzioni
+barplot(table(apply(run_gMFM$clusterO[,-burnin], 2, function(x) length(unique(x)) )))
+
+
+
+sourceCpp('./SourceCPP/calcium_CAM.cpp')
+run_DP = calcium_gibbs(Nrep = nrep, 
+                       y = y, g = g,
+                       cal = c(0,y),
+                       clO = cluster, clD = c(1,2,3,4,5,6), 
+                       A_start = A_start,
+                       b_start = 0,
+                       gamma_start = 0.6, 
+                       sigma2_start = 0.004, 
+                       tau2_start = 0.0001, 
+                       p_start = 0.01, 
+                       alpha = 1, beta = 1,
+                       max_xiK = 700, max_xiL = 500,
+                       kappa_D = 0.5, kappa_O = 0.5, 
+                       c0 = 0, varC0 = 0.1, 
+                       hyp_A1 = 4, hyp_A2 = 5, 
+                       hyp_b1 = 0, hyp_b2 = 1, 
+                       hyp_sigma21 = 1000, hyp_sigma22 = 1, 
+                       hyp_tau21 = 1000, hyp_tau22 = 1, 
+                       hyp_gamma1 = 1, hyp_gamma2 = 1,
+                       hyp_p1 = 1, hyp_p2 = 999,
+                       eps_gamma = 0.008,
+                       eps_A = 0.02)
+# save(run_DP, file="scen1_res_DP.Rdata")
+barplot(table(apply(run_DP$clusterD, 2, function(x) length(unique(x)) ))) # quanti cluster di distribuzioni
+barplot(table(apply(run_DP$clusterO[,-burnin], 2, function(x) length(unique(x)) )))
+
+
