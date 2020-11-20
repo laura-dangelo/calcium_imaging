@@ -27,26 +27,26 @@ plot(1:length(run_DP$A[5,-burnin]), run_DP$A[8,-burnin], type = "l", xlab = "ite
 barplot(table(apply(run_DP$clusterO[,-burnin], 2, function(x) length(unique(x)) )))
 
 
-burnin = 1:1800
+burnin = 1:800
 AA_DP = matrix(0,length(run_DP$b[-burnin]),n)
 for(i in 1:length(run_DP$b[-burnin]))
 {
   ii = i + max(burnin)
   AA_DP[i, t(run_DP$clusterO)[ii,] >0] = run_DP$A[run_DP$clusterO[run_DP$clusterO[,ii] >0,ii]+1,ii]
 }
-save(AA_DP, file = "scen3_AA_DP.Rdata")
-est_spikes = colMeans(AA) 
+# save(AA_DP, file = "scen3_AA_DP.Rdata")
+est_spikes = colMeans(AA_DP) 
 est_spikes[which( apply(t(run_DP$clusterO)[-burnin,], 2, function(x) mean(x != 0))<0.5)] = 0
 times = which(est_spikes>0)
 
 sum(sapply(spp, function(x) !(x %in% times))) / length(spp)  ### spikes non identificati: falsi negativi
 sum(sapply(times, function(x) !(x %in% spp))) / (n-length(spp)) ### falsi positivi
 
-AA[,which(est_spikes == 0)] = 0
-barplot(table( apply(AA, 1, function(x) length(unique(x))) ))
-moda = as.numeric(attr(which.max(table( apply(AA, 1, function(x) length(unique(x))) )), "names"))
+AA_DP[,which(est_spikes == 0)] = 0
+barplot(table( apply(AA_DP, 1, function(x) length(unique(x))) ))
+moda = as.numeric(attr(which.max(table( apply(AA_DP, 1, function(x) length(unique(x))) )), "names"))
 
-A_ind = AA[apply(AA, 1, function(x) length(unique( x )))==moda,]
+A_ind = AA_DP[apply(AA_DP, 1, function(x) length(unique( x )))==moda,]
 dataa = data.frame(A = A_ind[A_ind>0])
 ggplot(data = dataa, aes(x = A)) + 
   geom_histogram(bins = 30, aes(y = ..density..), col = "#00AFBB", fill = "#00AFBB", alpha = 0.3) +   

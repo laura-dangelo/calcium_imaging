@@ -16,16 +16,16 @@ n = length(y_real)
 nrep = 100
 
 
-# out = list()
-# out$calcium = matrix(c(0,y_real),length(y_real)+1, 1)
-# out$cluster = matrix(0, length(y_real), 1)
-# out$A = matrix(0, 100, 1)
-# out$AA = matrix(NA, length(y_real), 1)
-# out$b = 0
-# out$gamma = 0.5
-# out$sigma2 = 0.001
-# out$tau2 = 0.0003
-# out$p = 0.001
+out = list()
+out$calcium = matrix(c(0,y_real),length(y_real)+1, 1)
+out$cluster = matrix(0, length(y_real), 1)
+out$A = matrix(0, 100, 1)
+out$AA = matrix(NA, length(y_real), 1)
+out$b = 0
+out$gamma = 0.5
+out$sigma2 = 0.001
+out$tau2 = 0.0003
+out$p = 0.001
 
 
 start <- Sys.time()

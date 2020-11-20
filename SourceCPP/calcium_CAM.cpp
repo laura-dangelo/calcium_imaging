@@ -175,6 +175,7 @@ Rcpp::List slice_sampler(const arma::vec& y, const arma::vec& g,
   arma::vec maxK_j(J) ;
   maxK_j = 1 + arma::floor( (log(u_D) - log(1 - kappa_D)) / log(kappa_D) ) ;
   int maxK = std::max(clusterD.max(), maxK_j.max()) ; // upper bound on the number of distributions
+  if(maxK >= xi_D.n_elem) { maxK = xi_D.n_elem - 1 ;}
 
   
   // step 2: sample latent uniform on the observations
@@ -185,7 +186,7 @@ Rcpp::List slice_sampler(const arma::vec& y, const arma::vec& g,
   arma::vec maxL_t(T) ;
   maxL_t = 1 + arma::floor( (log(u_O) - log(1 - kappa_O)) / log(kappa_O) ) ;
   int maxL = std::max(clusterO.max(), maxL_t.max()) ; // upper bound on the number of clusters on the observations
- 
+  if(maxL >= xi_O.n_elem) { maxL = xi_O.n_elem - 1; }
   
   // step 3: sample the stick-breaking weights on the distributions
   arma::vec v_k(maxK) ;

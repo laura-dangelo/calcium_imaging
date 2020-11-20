@@ -134,12 +134,13 @@ group6 <- sim_data(n = n6, sigma2 = sigma2, tau2 = tau2, time_spike = spp[spp>(n
 
 y = c(group1$y, group2$y, group3$y, group4$y, group5$y, group6$y)
 g = c(rep(1,n1), rep(2,n2), rep(3,n3), rep(4,n4), rep(5,n5), rep(6,n6))
+A = c(group1$A, group2$A, group3$A, group4$A, group5$A, group6$A)
 plot(y, type = "l")
 
 # save(y, file="y_scen1.Rdata")
 # save(spp, file="spp_scen1.Rdata")
 # save(g, file="g_scen1.Rdata")
-
+# save(A, file="A_scen1.Rdata")
 
 
 clus = kmeans(diff(y,1)[(diff(y,1))>0.3], centers = 8)

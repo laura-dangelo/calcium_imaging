@@ -35,11 +35,11 @@ plot(1:length(run_gMFM$A[5,-burnin]), run_gMFM$A[6,-burnin], type = "l", xlab = 
 plot(1:length(run_gMFM$A[5,-burnin]), run_gMFM$A[7,-burnin], type = "l", xlab = "iterazioni", ylab = "A")
 plot(1:length(run_gMFM$A[5,-burnin]), run_gMFM$A[8,-burnin], type = "l", xlab = "iterazioni", ylab = "A")
 
-burnin = 1:1000
+burnin = 1:700
 barplot(table(apply(run_gMFM$clusterO[,-burnin], 2, function(x) length(unique(x)) )))
 
 
-burnin = 1:2900
+burnin = 1:900
 AA_gMFM = matrix(0,length(run_gMFM$b[-burnin]),n)
 for(i in 1:length(run_gMFM$b[-burnin]))
 {
@@ -78,7 +78,7 @@ int = n1:(n1+n2)
 int = (n1+n2):(n1+n2+n3)
 int = (n1+n2+n3):(n1+n2+n3+n4)
 int = (n1+n2+n3+n4):(n1+n2+n3+n4+n5)
-int = (n1+n2+n3+n4+n5):(n1+n2+n3+n4+n5+n6)
+
 
 subsetAA = AA_gMFM[,int]
 
