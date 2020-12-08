@@ -79,6 +79,16 @@ ggplot(data = df) +
   scale_y_continuous(name = "Calcium level")
 
 
+# plot solo di un intervallo
+int = 61000:61750
+ggplot(data = df[int,]) +
+  geom_line(aes(x = x, y = y)) +
+  theme_bw() +
+  theme(legend.position = "bottom") +
+  scale_x_continuous(name = "Time") +
+  scale_y_continuous(name = "Calcium level")
+
+
 
 # out = list()
 # out$calcium = matrix(c(0,y_real),length(y_real)+1, 1)
