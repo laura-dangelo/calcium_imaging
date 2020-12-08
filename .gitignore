@@ -1,5 +1,7 @@
+*.Rdata
 .Rproj.user
 .Rhistory
 .RData
 .Ruserdata
+.directory
 versione_vecchia

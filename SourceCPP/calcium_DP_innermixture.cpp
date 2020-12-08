@@ -404,7 +404,7 @@ Rcpp::List calcium_gibbs(int Nrep, arma::vec y,
     
     // Update p
     double n0 = std::count(line.begin(), line.end(), 0) ;
-    out_p(i+1) = R::rbeta(hyp_p2 + n - n0, hyp_p1 + n0) ;
+    out_p(i+1) = R::rbeta(hyp_p1 + n - n0, hyp_p2 + n0) ;
     //   out_p(i+1) = out_p(i) ;
     if(out_p(i+1) > 0.1) { check = 1 ; }
     

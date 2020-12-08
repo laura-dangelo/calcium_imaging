@@ -2,7 +2,8 @@ library(Rcpp)
 library(RcppDist)
 library(ggplot2)
 library(viridis)
-sourceCpp('./SourceCPP/calcium_DP_innermixture.cpp')
+
+
 
 ## mixture ##
 sim_data <- function(n, sigma2, tau2, time_spike, b, gamma, prob, par)
@@ -22,47 +23,77 @@ sim_data <- function(n, sigma2, tau2, time_spike, b, gamma, prob, par)
   return(list("y" = b + c + rnorm(n, 0, sqrt(sigma2)), "c" = c, "s" = s, "A" = A, "k" = k))
 }
 
+times_spike <- function(n, ns, p1, p2)
+{
+  times = rbinom(n, 1, p1)
+  for(i in 1:n)
+  {
+    if(times[i] == 1)
+    {
+      times[(i+1):(i+ns)] = rbinom(ns, 1, p2)
+    }
+  }
+  times 
+}
 
 
+#----------# parametri
+sigma2 = 0.003
+tau2 = 0.0001
+n = 20000
+gamma = 0.7
+b = 0
 
-spp = c(380,385,
-        985,
-        1000, 1001, 1003, 1004, 1005, 1007, 
-        1012,
-        1021, 1022, 1024,
-        1100, 
-        2800, 
-        2990, 2991, 2993, 2995, 2999, 3001, 3002,
-        3101,3104,
-        4000, 4004,
-        4700, 4701, 4703,
-        5500,
-        6000,6003,
-        6233, 
-        6250,
-        7100,7120,
-        8700,
-        8800, 8802, 8803, 8804)
+# prob di spike "distanti"
+pp = 0.012
+
+# per quanti istanti successivi ho spikes
+m = 7
+
+
+# probabilità di spike per m istanti successivi a uno spike
+pm = 0.17
+
 
 set.seed(1234)
-data2 <- sim_data(n = 10000, sigma2 = 0.004, tau2 = 0.00002, time_spike = spp,
-                 gamma = 0.6, b = 0,
-                 prob = c(0.5, 0.3, 0.2), par = c(0.3, 0.5, 0.8))
+spp = times_spike(n, m, pp, pm)
 
-y2 = data2$y
-plot(y2, type = "l")
 
+spp = which(spp == 1)
+length(spp)
+
+prob = c(0.2, 0.2, 0.15, 0.15, 0.15, 0.15)
+par = c(0.3, 0.50, 0.7, 0.9, 1.1, 1.5)
+
+length(par)
+
+data <- sim_data(n = n, sigma2 = sigma2, tau2 = tau2, time_spike = spp,
+                   gamma = gamma, b = b,
+                   prob = prob, par = par)
+
+y = data$y
+plot(y, type = "l")
+
+clus = kmeans(diff(y,1)[(diff(y,1))>0.3], centers = 8)
 A_start = rep(0,50)
-#  A_start[2:4] = c(0.3, 0.45, 0.65)
-n = length(y2)
-cluster = rep(0,length(y2))
-#  cluster[data2$s == 1] = data2$k
+A_start[2:9] = c(clus$centers)
+cluster = numeric(length(y))
+cluster[ (diff(y,1))>0.3] = clus$cluster
 
-nrep = 1500
+save(y, file="y_inner201120.Rdata")
+save(data, file="data_inner201120.Rdata")
+
+save(A_start, file="A_start_inner201120.Rdata")
+save(cluster, file="cluster_inner201120.Rdata")
+
+n = length(y)
+
+nrep = 2000
+burnin = 1:500
 set.seed(1234)
-
-run = calcium_gibbs(Nrep = nrep, y = y2, 
-                            cal = c(0,y2),
+sourceCpp('calcium_DP_innermixture.cpp')
+run = calcium_gibbs(Nrep = nrep, y = y, 
+                            cal = c(0,y),
                             cl = cluster, 
                             A_start = A_start,
                             b_start = 0,
@@ -72,12 +103,12 @@ run = calcium_gibbs(Nrep = nrep, y = y2,
                             p_start = 0.01, 
                             c0 = 0, varC0 = 0.1, 
                             alpha = 1, m = 1,
-                            hyp_A1 = 7, hyp_A2 = 10, 
+                            hyp_A1 = 4, hyp_A2 = 4, 
                             hyp_b1 = 0, hyp_b2 = 1, 
                             hyp_sigma21 = 1000, hyp_sigma22 = 1, 
                             hyp_tau21 = 1000, hyp_tau22 = 1, 
                             hyp_gamma1 = 1, hyp_gamma2 = 1,
-                            hyp_p1 = 1, hyp_p2 = 99,
+                            hyp_p1 = 1, hyp_p2 = 999,
                             eps_gamma = 0.01,
                             eps_A = 0.002)
 
@@ -91,7 +122,7 @@ run = calcium_gibbs(Nrep = nrep, y = y2,
 # run$tau2 = run$tau2[-burnin]
 # run$A = run$A[,-burnin]
 # run$p = run$p[-burnin]
-# save(run, file = "res_inner_181020.Rdata")
+# save(run, file = "res_inner_201120.Rdata")
 
 burnin = 1:500
 plot(1:length(run$p[-burnin]), run$p[-burnin], type = "l")
@@ -121,7 +152,7 @@ mean(run$gamma[-burnin])
 library(ggplot2)
 int = 1:n
 ggplot(data = data.frame(x = rep(int,2), 
-                         y = c( y2[int], rowMeans(run$calcium[,-burnin])[-1][int] ), 
+                         y = c( y[int], rowMeans(run$calcium[,-burnin])[-1][int] ), 
                          col = as.factor( c(rep(1, length(int)), rep(2, length(int)) ))), 
        aes(x = x, y = y ) ) + 
   geom_line(aes(color = col)) +
@@ -137,7 +168,7 @@ ggplot(data = data.frame(x = rep(int,2),
         legend.text=element_text(size=12)) 
 
 
-
+burnin = 1:1700
 AA = matrix(0, length(run$b[-burnin]), n)
 for(i in 1:length(run$b[-burnin]))
 {
@@ -158,66 +189,4 @@ length(spp)
 sum(sapply(spp, function(x) !(x %in% times))) / length(spp)  ### spikes non identificati falsi negativi
 sum(sapply(times, function(x) !(x %in% spp))) / (n-length(spp)) ### falsi positivi
 
-
-
-
-# grafico se fai simulazioni con diversi valori del parametro
-# int = 4600:4800
-# ggplot(data = data.frame(x = rep(int,2), 
-#                          y = c( y2[int], rowMeans(run$calcium[,-burnin])[-1][int] ), 
-#                          col = as.factor( c(rep(1, length(int)), rep(2, length(int)) ))), 
-#        aes(x = x, y = y ) ) + 
-#   geom_line(aes(color = col)) +
-#   theme_bw() +
-#   scale_x_continuous(name = "t", limits = c(min(int), max(int))) +
-# #  scale_y_continuous(name = expression(y[t]), limits = c(-0.35,0.67)) +
-#   theme(legend.title = element_blank(),
-#         legend.position = "bottom",
-#         legend.margin = margin(t=-0.09, r=0, b=0, l=0, unit="cm"),
-#         legend.text.align = 0,
-#         legend.text=element_text(size=11,
-#                                  margin = margin(l = 0.003, unit = "cm")) ) +
-#   geom_point(data = data.frame(points = c(spp, times1, times2, times3),
-#                                h = c(rep(-0.2,length(spp)), 
-#                                      rep(-0.25, length(times1)), 
-#                                      rep(-0.28, length(times2)), 
-#                                      rep(-0.31, length(times3))),
-#                                set = as.factor( c(rep(3,length(spp)), 
-#                                                   rep(4, length(times1)), 
-#                                                   rep(5, length(times2)), 
-#                                                   rep(6, length(times3))) ) ),
-#              aes(x = points, y = h, color = set), shape = 3, size = 2 ) +
-#   scale_color_manual(values = c("#000000", "#00BFC4", c("black", viridis(4)[1:3]) ) ,
-#                      labels = c(expression(y[t]), expression(c[t]), "True spike", "4", "5", "6"))+
-#   guides(colour = guide_legend(byrow = TRUE, nrow = 1,
-#                                override.aes = list(linetype = c("solid", "solid", rep("blank", 4)),
-#                                                    shape = c(NA,NA,rep(3, 4)))),
-#          label.position = "right")
- 
-
-
-hist(apply(run$clus[,-burnin], 1, function(x) mean(x != 0)), main = "Distr. of spike probabilities")
-
-### number of clusters
-plot(1:(nrep-max(burnin)), apply(run$cluster[,-burnin], 2, function(x) length(unique(x[x>0]))), pch=19, cex=0.2)
-barplot(table(apply(run$cluster[,-burnin], 2, function(x) length(unique(x[x>0])))))
-
-
-A3 = AA[apply(AA, 1, function(x) length(unique( x[x!=0] )))==3,]
-dataa = data.frame(A = c(A3[c(A3)>0]) )
-ggplot(data = dataa, aes(x = A)) + 
-  geom_histogram(aes(y = ..density..), col = "#00AFBB", fill = "#00AFBB", alpha = 0.3) +   
-  stat_density(aes(y = ..density..), fill = 1, alpha = 0, col = 1) + 
-  theme_bw() +
-  scale_x_continuous(limits = c(0.1,0.99))
-
-
-
-### cluster parameter
-minA = min( which(apply(run$A[-1,-burnin], 1, function(x) sum(x == 0)) == nrep-(max(burnin))) )
-minA -1
-run$A = run$A[1:(minA +1),]
-
-out_A = t(run$A)
-out_A[400:500,1:(minA)]
 
