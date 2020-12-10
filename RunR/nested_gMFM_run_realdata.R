@@ -76,7 +76,15 @@ ggplot(data = df) +
   theme_bw() +
   theme(legend.position = "bottom") +
   scale_x_continuous(name = "Time") +
-  scale_y_continuous(name = "Calcium level")
+  scale_y_continuous(name = "Calcium level") +
+  annotate("text", x = 8000, y = 2.8, label = expression( "~G"[1]), size = 8 ) +
+  annotate("text", x = 23500, y = 2.8, label = expression( "~G"[2]), size = 8 ) +
+  annotate("text", x = 35000, y = 2.8, label = expression( "~G"[3]), size = 8 ) +
+  annotate("text", x = 46500, y = 2.8, label = expression( "~G"[2]), size = 8 ) +
+  annotate("text", x = 61500, y = 2.8, label = expression( "~G"[1]), size = 8 )+
+  annotate("text", x = 74500, y = 2.8, label = expression( "~G"[4]), size = 8 )+
+  annotate("text", x = 86500, y = 2.8, label = expression( "~G"[2]), size = 8 )+
+  annotate("text", x = 104500, y = 2.8, label = expression( "~G"[1]), size = 8 )
 
 
 # plot solo di un intervallo

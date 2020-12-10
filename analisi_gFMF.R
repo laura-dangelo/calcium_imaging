@@ -1,18 +1,29 @@
+library(ggplot2)
+library(viridis)
+
+y = out$y
+g = out$g
+A = out$A
+s = out$s
+spp = which(spp>0)
+k = out$k
+n = length(y)
+
 burnin = 1:10
 plot(1:length(run_gMFM$p[-burnin]), run_gMFM$p[-burnin], type = "l")
 lines(1:length(run_gMFM$p[-burnin]), cumsum(run_gMFM$p[-burnin])/1:length(run_gMFM$p[-burnin]), col =2)
 
-plot(1:length(run_gMFM$sigma2[-burnin]), run_gMFM$sigma2[-burnin], type = "l", xlab = "iterazioni", ylab = "sigma2")
-lines(1:length(run_gMFM$sigma2[-burnin]), cumsum(run_gMFM$sigma2[-burnin])/1:length(run_gMFM$sigma2[-burnin]), col =2)
-
-plot(1:length(run_gMFM$tau[-burnin]), run_gMFM$tau[-burnin], type = "l", xlab = "iterazioni", ylab = "tau2")
-lines(1:length(run_gMFM$tau[-burnin]), cumsum(run_gMFM$tau[-burnin])/1:length(run_gMFM$tau[-burnin]), col =2)
-
-plot(1:length(run_gMFM$b[-burnin]), run_gMFM$b[-burnin], type = "l", xlab = "iterazioni", ylab = "b")
-lines(1:length(run_gMFM$b[-burnin]), cumsum(run_gMFM$b[-burnin])/1:length(run_gMFM$b[-burnin]), col =2)
-
-plot(1:length(run_gMFM$gamma[-burnin]), run_gMFM$gamma[-burnin], type = "l", xlab = "iterazioni", ylab = "gamma")
-lines(1:length(run_gMFM$gamma[-burnin]), cumsum(run_gMFM$gamma[-burnin])/1:length(run_gMFM$gamma[-burnin]), col =2)
+# plot(1:length(run_gMFM$sigma2[-burnin]), run_gMFM$sigma2[-burnin], type = "l", xlab = "iterazioni", ylab = "sigma2")
+# lines(1:length(run_gMFM$sigma2[-burnin]), cumsum(run_gMFM$sigma2[-burnin])/1:length(run_gMFM$sigma2[-burnin]), col =2)
+# 
+# plot(1:length(run_gMFM$tau[-burnin]), run_gMFM$tau[-burnin], type = "l", xlab = "iterazioni", ylab = "tau2")
+# lines(1:length(run_gMFM$tau[-burnin]), cumsum(run_gMFM$tau[-burnin])/1:length(run_gMFM$tau[-burnin]), col =2)
+# 
+# plot(1:length(run_gMFM$b[-burnin]), run_gMFM$b[-burnin], type = "l", xlab = "iterazioni", ylab = "b")
+# lines(1:length(run_gMFM$b[-burnin]), cumsum(run_gMFM$b[-burnin])/1:length(run_gMFM$b[-burnin]), col =2)
+# 
+# plot(1:length(run_gMFM$gamma[-burnin]), run_gMFM$gamma[-burnin], type = "l", xlab = "iterazioni", ylab = "gamma")
+# lines(1:length(run_gMFM$gamma[-burnin]), cumsum(run_gMFM$gamma[-burnin])/1:length(run_gMFM$gamma[-burnin]), col =2)
 
 plot(1:length(run_gMFM$alpha[-burnin]), run_gMFM$alpha[-burnin], type = "l", xlab = "iterazioni", ylab = "alpha")
 lines(1:length(run_gMFM$alpha[-burnin]), cumsum(run_gMFM$alpha[-burnin])/1:length(run_gMFM$alpha[-burnin]), col =2)
@@ -40,8 +51,8 @@ barplot(table(apply(run_gMFM$clusterO[,-burnin], 2, function(x) length(unique(x)
 
 
 burnin = 1:900
-AA_gMFM = matrix(0,length(run_gMFM$b[-burnin]),n)
-for(i in 1:length(run_gMFM$b[-burnin]))
+AA_gMFM = matrix(0,length(run_gMFM$alpha[-burnin]),n)
+for(i in 1:length(run_gMFM$alpha[-burnin]))
 {
   ii = i + max(burnin)
   AA_gMFM[i, t(run_gMFM$clusterO)[ii,] >0] = run_gMFM$A[run_gMFM$clusterO[run_gMFM$clusterO[,ii] >0,ii]+1,ii]
