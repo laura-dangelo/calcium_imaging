@@ -16,7 +16,7 @@ matt
 
 run_mcmc_gMFM <- function(nsim, gammapar)
 {
-  filename_load = paste0("data/data_scen1_seed", nsim,".Rdata")
+  filename_load = paste0("data/data_scen3_seed", nsim,".Rdata")
   load(filename_load)
   
   y = out$y
@@ -28,7 +28,7 @@ run_mcmc_gMFM <- function(nsim, gammapar)
   run_gMFM = list()
   run_gMFM$calcium = matrix(c(0,y),length(y)+1, 1)
   run_gMFM$clusterO = matrix(cluster, length(y), 1)
-  run_gMFM$clusterD = matrix(1:6, 6, 1)
+  run_gMFM$clusterD = matrix(1:5, 5, 1)
   run_gMFM$A = matrix(A_start, length(A_start), 1)
   run_gMFM$b = 0
   run_gMFM$gamma = 0.6
@@ -104,7 +104,7 @@ run_mcmc_gMFM <- function(nsim, gammapar)
   run_gMFM$maxK = run_gMFM$maxK[-burnin]
   run_gMFM$maxL = run_gMFM$maxL[-burnin]
   
-  filename = paste0("scen1_run_gMFM_gammapar", gammapar, "_sim", nsim)
+  filename = paste0("scen3_run_gMFM_gammapar", gammapar, "_sim", nsim)
   save( run_gMFM, file = paste0(filename, ".Rdata") )  
 }
 

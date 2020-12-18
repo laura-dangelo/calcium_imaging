@@ -1,22 +1,21 @@
 library(Rcpp)
-library(parallel)
+# library(parallel)
 library(RcppArmadillo)
-sourceCpp('calcium_nested_gMFM.cpp')
+sourceCpp('/home/laura/Documents/Dottorato/2.06 Calcium imaging/calcium_imaging/calcium_imaging/SourceCPP/calcium_nested_gMFM2.cpp')
 
-  
-  
-nsim = 50
+
+
+nsim = c(6,23,42)
 nrep = 3000
 burnin = 1:2000
-gamma_par = c(3,4,6,8)
+gamma_par = c(8)
 
-matt = matrix(c(rep(1:nsim,length(gamma_par)), sort(rep(gamma_par,nsim))), nsim*length(gamma_par), 2, byrow = F)
+matt = matrix(c(rep(nsim,length(gamma_par)), sort(rep(gamma_par,length(nsim)))), length(nsim)*length(gamma_par), 2, byrow = F)
 matt
-
 
 run_mcmc_gMFM <- function(nsim, gammapar)
 {
-  filename_load = paste0("data/data_scen1_seed", nsim,".Rdata")
+  filename_load = paste0("/home/laura/Documents/Dottorato/2.06 Calcium imaging/calcium_imaging/calcium_imaging/Simulazioni2/Scen1/data/data_scen1_seed", nsim,".Rdata")
   load(filename_load)
   
   y = out$y
@@ -108,5 +107,27 @@ run_mcmc_gMFM <- function(nsim, gammapar)
   save( run_gMFM, file = paste0(filename, ".Rdata") )  
 }
 
+run_mcmc_gMFM(nsim = 42, gammapar = 8)
 
-mclapply(1:nrow(matt), function(x) run_mcmc_gMFM(nsim = matt[x,1], gammapar = matt[x,2]), mc.cores = 6 )
+sapply(1:nrow(matt), function(x) run_mcmc_gMFM(nsim = matt[x,1], gammapar = matt[x,2]))
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

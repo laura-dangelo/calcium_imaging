@@ -1,0 +1,63 @@
+library(mclust)
+
+gammapar = c(6,8)
+nsim = 50
+matt <- matrix(c(rep(1:nsim, length(gammapar)), sort(rep(gammapar,nsim)) ), nsim*length(gammapar), 2)
+
+
+J = 5
+n1 = n2 = n3 = n4 = n5 = 5000
+
+
+AA_comp <- function(nsim, gammapar)
+{
+  filename = paste0("scen3_run_gMFM_gammapar", gammapar, "_sim", nsim, ".Rdata")
+  load(file = filename)
+  filename = paste0("data/data_scen3_seed", nsim, ".Rdata")
+  load(file = filename)
+  y = out$y
+  g = out$g
+  A = out$A
+  s = out$s
+  spp = which(s>0)
+  k = out$k
+  n = length(y)
+  
+  burnin = 1:800
+  AA_gMFM = matrix(0,length(run_gMFM$p[-burnin]),n)
+  for(i in 1:length(run_gMFM$p[-burnin]))
+  {
+    ii = i + max(burnin)
+    AA_gMFM[i, t(run_gMFM$clusterO)[ii,] >0] = run_gMFM$A[run_gMFM$clusterO[run_gMFM$clusterO[,ii] >0,ii]+1,ii]
+  }
+  filenameAA = paste0("resAA_gammapar", gammapar, "_" nsim, ".Rdata")
+
+  est_spikes = colMeans(AA_gMFM) 
+  est_spikes[which( apply(t(run_gMFM$clusterO)[-burnin,], 2, function(x) mean(x != 0))<0.5)] = 0
+  times = which(est_spikes>0)
+  
+  if(length(times)>0)
+  {
+    save(AA_gMFM, file = filenameAA)
+  }
+  if(nsim%%5 == 0) print(nsim)
+}
+
+
+mclapply(1:nrow(matt), function(x) AA_comp(nsim = matt[x,1], gammapar = matt[x,2]), mc.cores = 6 )
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

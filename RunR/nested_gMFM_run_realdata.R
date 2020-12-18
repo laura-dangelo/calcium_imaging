@@ -10,8 +10,8 @@ data <- read.csv("../data/cellula2.csv", header = FALSE)
 y_real = c(data$V1)
 length(y_real)
 rm(list = ("data"))
-plot(1:length(y_real), y_real, type = "l")
-str(y_real)
+# plot(1:length(y_real), y_real, type = "l")
+# str(y_real)
 n = length(y_real)
 
 
@@ -27,8 +27,8 @@ g[min(stat_grat$start[(stat_grat$start > 30000) &
                         (stat_grat$start < 90000)]):max(stat_grat$end[(stat_grat$end > 30000) & 
                                                                         (stat_grat$end < 90000)])] = 1
 int[min(stat_grat$start[(stat_grat$start > 30000) & 
-                        (stat_grat$start < 90000)]):max(stat_grat$end[(stat_grat$end > 30000) & 
-                                                                        (stat_grat$end < 90000)])] = 12
+                          (stat_grat$start < 90000)]):max(stat_grat$end[(stat_grat$end > 30000) & 
+                                                                          (stat_grat$end < 90000)])] = 12
 g[min(stat_grat$start[stat_grat$start > 90000]):max(stat_grat$end[stat_grat$end > 90000])] = 1
 int[min(stat_grat$start[stat_grat$start > 90000]):max(stat_grat$end[stat_grat$end > 90000])] = 13
 
@@ -40,8 +40,8 @@ g[min(nat_scene$start[(nat_scene$start > 35000) &
                         (nat_scene$start < 60000)]):max(nat_scene$end[(nat_scene$end > 35000) & 
                                                                         (nat_scene$end < 60000)])] = 2
 int[min(nat_scene$start[(nat_scene$start > 35000) & 
-                        (nat_scene$start < 60000)]):max(nat_scene$end[(nat_scene$end > 35000) & 
-                                                                        (nat_scene$end < 60000)])] = 22
+                          (nat_scene$start < 60000)]):max(nat_scene$end[(nat_scene$end > 35000) & 
+                                                                          (nat_scene$end < 60000)])] = 22
 g[min(nat_scene$start[nat_scene$start > 60000]):max(nat_scene$end[nat_scene$end > 60000])] = 2
 int[min(nat_scene$start[nat_scene$start > 60000]):max(nat_scene$end[nat_scene$end > 60000])] = 23
 
@@ -67,10 +67,10 @@ cols = c("#91ff00", "#00fffb","#ff3700")
 
 ggplot(data = df) +
   geom_rect(data = df_rect, inherit.aes = FALSE,
-             aes(xmin = start, 
-                  xmax = end, 
-                  ymin = -Inf, 
-                  ymax = Inf, fill = Stimulus), alpha = 0.12 ) +
+            aes(xmin = start, 
+                xmax = end, 
+                ymin = -Inf, 
+                ymax = Inf, fill = Stimulus), alpha = 0.12 ) +
   scale_fill_manual(values = cols) +
   geom_line(aes(x = x, y = y)) +
   theme_bw() +
@@ -89,6 +89,8 @@ ggplot(data = df) +
 
 # plot solo di un intervallo
 int = 61000:61750
+
+int = 20600:26000
 ggplot(data = df[int,]) +
   geom_line(aes(x = x, y = y)) +
   theme_bw() +
@@ -98,27 +100,29 @@ ggplot(data = df[int,]) +
 
 
 
-# out = list()
-# out$calcium = matrix(c(0,y_real),length(y_real)+1, 1)
-# out$clusterO = matrix(0, length(y_real), 1)
-# out$clusterD = matrix(1:4, length(unique(g)), 1)
-# out$A = matrix(0, 100, 1)
-# out$b = 0
-# out$gamma = 0.6
-# out$sigma2 = 0.001
-# out$tau2 = 0.0003
-# out$p = 0.001
-# out$alpha = 0.5
-# out$beta = 0.5
-# out$maxK = 6
-# out$maxL = 15
+out = list()
+out$calcium = matrix(c(0,y_real),length(y_real)+1, 1)
+out$clusterO = matrix(0, length(y_real), 1)
+out$clusterD = matrix(c(1,2,2,3), length(unique(g)), 1)
+out$A = matrix(0, 100, 1)
+out$b = 0
+out$gamma = 0.6
+out$sigma2 = 0.001
+out$tau2 = 0.0003
+out$p = 0.001
+out$alpha = 0.5
+out$beta = 0.5
+out$maxK = 6
+out$maxL = 15
 
 clus = kmeans(y_real[y_real>0.4], centers = 5)
 out$A[2:6,1] = c(clus$centers)
 out$clusterO[y_real>0.4,1] = clus$cluster
 
 
-nrep = 499
+rm(list=c("stat_grat","nat_movie","nat_scene","int", "clus"))
+
+nrep = 500
 start <- Sys.time()
 run = calcium_gibbs(Nrep = nrep, 
                     y = y_real,
@@ -170,29 +174,30 @@ out$maxK = c(out$maxK, run$maxK)
 out$maxL = c(out$maxL, run$maxL)
 out$p = c(out$p, run$p)
 
+rm(list=("run"))
 
-# burnin = 1:500
-# out$calcium = out$calcium[,-burnin]
-# out$clusterO = out$clusterO[,-burnin]
-# out$clusterD = out$clusterD[,-burnin]
-# out$b = out$b[-burnin]
-# out$gamma = out$gamma[-burnin]
-# out$sigma2 = out$sigma2[-burnin]
-# out$tau2 = out$tau2[-burnin]
-# out$A = out$A[,-burnin]
-# out$p = out$p[-burnin]
-# out$alpha = out$alpha[-burnin]
-# out$beta = out$beta[-burnin]
-# out$maxK = out$maxK[-burnin]
-# out$maxL = out$maxL[-burnin]
+burnin = 1:1000
+out$calcium = out$calcium[,-burnin]
+out$clusterO = out$clusterO[,-burnin]
+out$clusterD = out$clusterD[,-burnin]
+out$b = out$b[-burnin]
+out$gamma = out$gamma[-burnin]
+out$sigma2 = out$sigma2[-burnin]
+out$tau2 = out$tau2[-burnin]
+out$A = out$A[,-burnin]
+out$p = out$p[-burnin]
+out$alpha = out$alpha[-burnin]
+out$beta = out$beta[-burnin]
+out$maxK = out$maxK[-burnin]
+out$maxL = out$maxL[-burnin]
 str(out)
 
-# save(out, file = "res_realdata_051120.Rdata")
+save(out, file = "res_realdata_161220d.Rdata")
+out$calcium = NULL
+# burnin 2000
 
 
-
-
-burnin = 1:500
+burnin = 1:10
 plot(1:length(out$p[-burnin]), out$p[-burnin], type = "l")
 lines(1:length(out$p[-burnin]), cumsum(out$p[-burnin])/1:length(out$p[-burnin]), col =2)
 
@@ -220,6 +225,9 @@ lines(1:length(out$maxL[-burnin]), cumsum(out$maxL[-burnin])/1:length(out$maxL[-
 plot(1:length(out$maxK[-burnin]), out$maxK[-burnin], type = "l", xlab = "iterazioni", ylab = "maxK")
 lines(1:length(out$maxK[-burnin]), cumsum(out$maxK[-burnin])/1:length(out$maxL[-burnin]), col =2)
 
+out$clusterD[,100]
+
+
 burnin = 1:850
 barplot(table(apply(out$clusterO[,-burnin], 2, function(x) length(unique(x)) )))
 
@@ -230,7 +238,7 @@ for(i in 1:length(out$b[-burnin]))
   AA_gMFM[i, t(out$clusterO)[ii,] >0] = out$A[out$clusterO[out$clusterO[,ii] >0,ii]+1,ii]
 }
 
-# save(AA_gMFM, file = "AA_realdata_051120.Rdata")
+# save(AA_gMFM, file = "AA_realdata_161220.Rdata")
 est_spikes = colMeans(AA_gMFM) 
 est_spikes[which( apply(t(out$clusterO)[-burnin,], 2, function(x) mean(x != 0))<0.5)] = 0
 times = which(est_spikes>0)
@@ -245,7 +253,8 @@ datAA_gMFM = data.frame(A = A_ind[A_ind>0])
 ggplot(data = datAA_gMFM, aes(x = A)) + 
   geom_histogram(bins = 30, aes(y = ..density..), col = "#00AFBB", fill = "#00AFBB", alpha = 0.3) +   
   stat_density(aes(y = ..density..), fill = 1, alpha = 0, col = 1) + 
-  theme_bw() 
+  theme_bw() +
+  xlim(c(0.1,1.5))
 
 
 
@@ -268,26 +277,39 @@ moda = as.numeric(attr(which.max(table( apply(subsetAA, 1, function(x) length(un
 A_ind = subsetAA[apply(subsetAA, 1, function(x) length(unique( x )))== moda,]
 dataa = data.frame(A = A_ind[A_ind>0])
 plot1 <- ggplot(data = dataa, aes(x = A)) + 
-  geom_histogram(bins = 35, aes(y = ..density..), col = "#00AFBB", fill = "#00AFBB", alpha = 0.3) +   
+  geom_histogram(aes(y = ..density..), col = "#00AFBB", fill = "#00AFBB", alpha = 0.3) +   
   stat_density(aes(y = ..density..), fill = 1, alpha = 0, col = 1) + 
   theme_bw() +
-  scale_x_continuous(limits=c(0.16,1.5), breaks = seq(0.2,1.4,by=0.2), name = "") + 
-  scale_y_continuous(name = "Density")
+  scale_x_continuous(limits=c(0.1,1.3), breaks = seq(0.2,1.4,by=0.2), name = "") + 
+  scale_y_continuous(name = "Static gratings")
 
-intt = which((g==3)|(g==2))
+intt = which((g==2))
 subsetAA = AA_gMFM[,intt]
 moda = as.numeric(attr(which.max(table( apply(subsetAA, 1, function(x) length(unique(x))) )), "names"))
 A_ind = subsetAA[apply(subsetAA, 1, function(x) length(unique( x )))== moda,]
 dataa = data.frame(A = A_ind[A_ind>0])
 plot2 <- ggplot(data = dataa, aes(x = A)) + 
-  geom_histogram(bins = 35, aes(y = ..density..), col = "#00AFBB", fill = "#00AFBB", alpha = 0.3) +   
+  geom_histogram(aes(y = ..density..), col = "#00AFBB", fill = "#00AFBB", alpha = 0.3) +   
   stat_density(aes(y = ..density..), fill = 1, alpha = 0, col = 1) + 
   theme_bw() +
-  scale_x_continuous(limits=c(0.16,1.5), breaks = seq(0.2,1.4,by=0.2), name = "A") + 
-  scale_y_continuous(name = "Density")
+  scale_x_continuous(limits=c(0.1,1.3), breaks = seq(0.2,1.4,by=0.2), name = "") + 
+  scale_y_continuous(name = "Natural scene")
+
+intt = which((g==3))
+subsetAA = AA_gMFM[,intt]
+moda = as.numeric(attr(which.max(table( apply(subsetAA, 1, function(x) length(unique(x))) )), "names"))
+A_ind = subsetAA[apply(subsetAA, 1, function(x) length(unique( x )))== moda,]
+dataa = data.frame(A = A_ind[A_ind>0])
+plot3 <- ggplot(data = dataa, aes(x = A)) + 
+  geom_histogram(aes(y = ..density..), col = "#00AFBB", fill = "#00AFBB", alpha = 0.3) +   
+  stat_density(aes(y = ..density..), fill = 1, alpha = 0, col = 1) + 
+  theme_bw() +
+  scale_x_continuous(limits=c(0.1,1.3), breaks = seq(0.2,1.4,by=0.2), name = "A") + 
+  scale_y_continuous(name = "Natural movie")
+
 
 require(gridExtra)
-grid.arrange(plot1, plot2, nrow=2)
+grid.arrange(plot1, plot2, plot3, nrow=3)
 
 # tot spikes = 1476
 # group 1: 460 - 0.01018398
@@ -298,7 +320,7 @@ grid.arrange(plot1, plot2, nrow=2)
 
 
 
-burnin = 1:800
+burnin = 1:10
 barplot(table(apply(out$clusterD[,-burnin], 2, function(x) length(unique(x)) ))) # quanti cluster di distribuzioni
 moda = as.numeric(attr(which.max(table(apply(out$clusterD[,-burnin], 2, function(x) length(unique(x)) ))), "names"))
 
@@ -360,5 +382,13 @@ ggplot(data = dff) +
   theme_bw() +
   theme(legend.position = "bottom") +
   scale_x_continuous(name = "Time") +
-  scale_y_continuous(name = "Calcium level") 
+  scale_y_continuous(name = "Calcium level")
 
+
+
+
+
+post_clusterO = out$clusterO
+rm(list=c("out"))
+str(post_clusterO)
+post_clusterO_positive = 

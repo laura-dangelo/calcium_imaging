@@ -1,22 +1,21 @@
 library(Rcpp)
-library(parallel)
-library(RcppArmadillo)
-sourceCpp('calcium_nested_gMFM.cpp')
+# library(parallel)
+library(RcppArmadillo) 
+sourceCpp('/home/laura/Documents/Dottorato/2.06 Calcium imaging/calcium_imaging/calcium_imaging/SourceCPP/calcium_nested_gMFM2.cpp')
 
-  
-  
-nsim = 50
+
+
+nsim = c(2,8,44)
 nrep = 3000
 burnin = 1:2000
-gamma_par = c(3,4,6,8)
+gamma_par = c(6)
 
-matt = matrix(c(rep(1:nsim,length(gamma_par)), sort(rep(gamma_par,nsim))), nsim*length(gamma_par), 2, byrow = F)
+matt = matrix(c(rep(nsim,length(gamma_par)), sort(rep(gamma_par,length(nsim)))), length(nsim)*length(gamma_par), 2, byrow = F)
 matt
-
 
 run_mcmc_gMFM <- function(nsim, gammapar)
 {
-  filename_load = paste0("data/data_scen1_seed", nsim,".Rdata")
+  filename_load = paste0("/home/laura/Documents/Dottorato/2.06 Calcium imaging/calcium_imaging/calcium_imaging/Simulazioni2/Scen3/data/data_scen3_seed", nsim,".Rdata")
   load(filename_load)
   
   y = out$y
@@ -28,7 +27,7 @@ run_mcmc_gMFM <- function(nsim, gammapar)
   run_gMFM = list()
   run_gMFM$calcium = matrix(c(0,y),length(y)+1, 1)
   run_gMFM$clusterO = matrix(cluster, length(y), 1)
-  run_gMFM$clusterD = matrix(1:6, 6, 1)
+  run_gMFM$clusterD = matrix(1:5, 5, 1)
   run_gMFM$A = matrix(A_start, length(A_start), 1)
   run_gMFM$b = 0
   run_gMFM$gamma = 0.6
@@ -104,9 +103,43 @@ run_mcmc_gMFM <- function(nsim, gammapar)
   run_gMFM$maxK = run_gMFM$maxK[-burnin]
   run_gMFM$maxL = run_gMFM$maxL[-burnin]
   
-  filename = paste0("scen1_run_gMFM_gammapar", gammapar, "_sim", nsim)
+  filename = paste0("scen3_run_gMFM_gammapar", gammapar, "_sim", nsim)
   save( run_gMFM, file = paste0(filename, ".Rdata") )  
 }
 
 
-mclapply(1:nrow(matt), function(x) run_mcmc_gMFM(nsim = matt[x,1], gammapar = matt[x,2]), mc.cores = 6 )
+run_mcmc_gMFM(nsim = 28, gammapar = 6)
+
+
+nsim = 28
+filenamep <- paste0("scen3_run_gMFM_gammapar4_sim", nsim, ".Rdata")
+load(filenamep)
+plot(1:length(run_gMFM$p), run_gMFM$p, type = "l")
+
+
+sapply(1:nrow(matt), function(x) run_mcmc_gMFM(nsim = matt[x,1], gammapar = matt[x,2]))
+
+
+
+par(mfrow=c(5,1))
+for(i in 41:50)
+{
+  filename = paste0("/home/laura/Documents/Dottorato/2.06 Calcium imaging/calcium_imaging/calcium_imaging/Simulazioni2/Scen3/par8/scen3_run_gMFM_gammapar8_sim",i ,".Rdata")
+  load(file = filename)
+  plot(1:length(run_gMFM$p), run_gMFM$p, type = "l")
+
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+

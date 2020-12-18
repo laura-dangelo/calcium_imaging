@@ -1,38 +1,39 @@
 library(Rcpp)
-library(parallel)
+# library(parallel)
 library(RcppArmadillo)
-sourceCpp('calcium_CAM_server.cpp')
+sourceCpp('/home/laura/Documents/Dottorato/2.06 Calcium imaging/calcium_imaging/calcium_imaging/SourceCPP/calcium_CAM.cpp')
 
 
-load("y_scen1.Rdata") ### cambiare indirizzo
-load("g_scen1.Rdata") ### cambiare indirizzo
-load("A_start_scen1.Rdata") ### cambiare indirizzo
-load("cluster_scen1.Rdata") ### cambiare indirizzo
-
-
-
-
-nsim = 60
+nsim = 9
 nrep = 3000
-burnin = 1:2000
-gamma_par = c(6)
+burnin = 1:2000 
+gamma_par = c(8)
+gammapar = 8
 
-matt = matrix(c(rep(1:nsim,length(gamma_par)), sort(rep(gamma_par,nsim))), nsim*length(gamma_par), 2, byrow = F)
-
+matt = matrix(c(rep(nsim,length(gamma_par)), sort(rep(gamma_par,length(nsim)))), length(nsim)*length(gamma_par), 2, byrow = F)
+matt
 
 run_mcmc_DP <- function(nsim, gammapar)
 {
+  filename_load = paste0("/home/laura/Documents/Dottorato/2.06 Calcium imaging/calcium_imaging/calcium_imaging/Simulazioni2/Scen1/data/data_scen1_seed", nsim,".Rdata")
+  load(filename_load)
+  
+  y = out$y
+  g = out$g
+  A = out$A
+  A_start = out$A_start
+  cluster = out$cluster
+  
   run_DP = list()
   run_DP$calcium = matrix(c(0,y),length(y)+1, 1)
   run_DP$clusterO = matrix(cluster, length(y), 1)
-  run_DP$clusterD = matrix(1:6, 6, 1)
+  run_DP$clusterD = matrix(c(1,2,3,4,1,2), 6, 1)
   run_DP$A = matrix(A_start, length(A_start), 1)
   run_DP$b = 0
   run_DP$gamma = 0.6
   run_DP$sigma2 = 0.004
   run_DP$tau2 = 0.0003
   run_DP$p = 0.001
-
   
   while(length(run_DP$b) == 1)
   {
@@ -49,7 +50,7 @@ run_mcmc_DP <- function(nsim, gammapar)
                         tau2_start = c(run_DP$tau2[length(run_DP$b)]),
                         p_start = c(run_DP$p[length(run_DP$b)]),
                         alpha = 1, beta = 1,
-                        max_xiK = 200, max_xiL = 200,
+                        max_xiK = 300, max_xiL = 200,
                         kappa_D = 0.5, kappa_O = 0.5, 
                         c0 = 0, varC0 = 0.1, 
                         hyp_A1 = gammapar, hyp_A2 = gammapar, 
@@ -59,7 +60,8 @@ run_mcmc_DP <- function(nsim, gammapar)
                         hyp_gamma1 = 1, hyp_gamma2 = 1,
                         hyp_p1 = 1, hyp_p2 = 999,
                         eps_gamma = 0.01,
-                        eps_A = 0.002)
+                        eps_A = 0.002) 
+    
     
     run_DP$calcium = cbind(run_DP$calcium, run$calcium)
     run_DP$clusterO = cbind(run_DP$clusterO, run$clusterO)
@@ -70,6 +72,7 @@ run_mcmc_DP <- function(nsim, gammapar)
     run_DP$tau2 = c(run_DP$tau2, run$tau2)
     run_DP$A = cbind(run_DP$A, run$A)
     run_DP$p = c(run_DP$p, run$p)
+    rm(list=("run"))
     
   }
   
@@ -82,11 +85,44 @@ run_mcmc_DP <- function(nsim, gammapar)
   run_DP$tau2 = c(summary(run_DP$tau2[-burnin]))
   run_DP$A = run_DP$A[,-burnin]
   run_DP$p = run_DP$p[-burnin]
-
   
   filename = paste0("scen1_run_DP_gammapar", gammapar, "_sim", nsim)
   save( run_DP, file = paste0(filename, ".Rdata") )  
 }
 
-  
-mclapply(1:nrow(matt), function(x) run_mcmc_DP(nsim = matt[x,1], gammapar = matt[x,2]), mc.cores=4 )
+
+nrep = 3000
+burnin = 1:2000
+run_mcmc_DP(nsim = 14, gammapar = 8)
+
+
+plot(1:length(run_DP$p), run_DP$p, type = "l")
+lines(1:length(run_DP$p), cumsum(run_DP$p)/1:length(run_DP$p), col =2)
+
+
+# sapply(1:nrow(matt), function(x) run_mcmc_DP(nsim = matt[x,1], gammapar = matt[x,2]))
+
+
+
+# rowMeans(rand_indexD)
+str(run_DP$clusterD)
+run_DP$clusterD[,100]
+
+burnin = 1:800
+library(mclust)
+apply(run_DP$clusterD[,-burnin], 2, function(x) adjustedRandIndex(x, c(1,2,3,4,1,2)))
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

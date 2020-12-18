@@ -1,0 +1,98 @@
+library(mclust)
+
+gammapar = c(3,4,6,8)
+nsim = 50
+matt <- matrix(c(rep(1:nsim, length(gammapar)), sort(rep(gammapar,nsim)) ), nsim*length(gammapar), 2)
+
+
+J = 4
+n1 = n2 = n3 = n4 = 5000
+prob1 = c(0.2, 0.2, 0.15, 0.15, 0.15, 0.15)
+par1 = c(0.3, 0.50, 0.7, 0.9, 1.1, 1.5)
+
+prob2 = rep(0.25, 4)
+par2 = c(0.3, 0.90, 1.5, 1.8)
+
+prob3 = c(0.4, 0.2, 0.4)
+par3 = c(0.5, 0.90, 1.5)
+
+### parametri: 
+unip <- sort(unique(c(par1,par2,par3)))
+unip
+length(unip)
+
+burnin = 1:800
+false_negatives = numeric(50)
+false_positives = numeric(50)
+number_clustersO = numeric(50)
+number_clustersD = numeric(50)
+number_clustersO_j = matrix(NA, 50, J)
+
+rand_indexO = matrix(0, 50, 201)
+rand_indexD = matrix(0, 50, 201)
+
+AA_comp <- function(nsim, gammapar)
+{
+  filename = paste0("scen2_run_gMFM_gammapar", gammapar, "_sim", nsim, ".Rdata")
+  load(file = filename)
+  filename = paste0("data/data_scen2_seed", nsim, ".Rdata")
+  load(file = filename)
+  y = out$y
+  g = out$g
+  A = out$A
+  s = out$s
+  spp = which(s>0)
+  k = out$k
+  n = length(y)
+  
+  burnin = 1:800
+  AA_gMFM = matrix(0,length(run_gMFM$p[-burnin]),n)
+  for(i in 1:length(run_gMFM$p[-burnin]))
+  {
+    ii = i + max(burnin)
+    AA_gMFM[i, t(run_gMFM$clusterO)[ii,] >0] = run_gMFM$A[run_gMFM$clusterO[run_gMFM$clusterO[,ii] >0,ii]+1,ii]
+  }
+  filenameAA = paste0("resAA_gammapar", gammapar, "_" nsim, ".Rdata")
+
+  est_spikes = colMeans(AA_gMFM) 
+  est_spikes[which( apply(t(run_gMFM$clusterO)[-burnin,], 2, function(x) mean(x != 0))<0.5)] = 0
+  times = which(est_spikes>0)
+  
+  if(length(times)>0)
+  {
+    save(AA_gMFM, file = filenameAA)
+
+    AA_cluster = apply(AA_gMFM, 1, rank )
+    rand_indexO[nsim,] = apply(AA_cluster, 2, function(x) adjustedRandIndex(x,rank(A)) )
+    rand_indexD[nsim,] = apply(run_gMFM$clusterD[,-burnin], 2, function(x) adjustedRandIndex(x, c(1,2,3,1) ) )
+    
+    false_negatives[nsim] = sum(sapply(spp, function(x) !(x %in% times))) / length(spp)  ### spikes non identificati: falsi negativi
+    false_positives[nsim] = sum(sapply(times, function(x) !(x %in% spp))) / (n-length(spp)) ### falsi positivi
+    
+  }
+  save(rand_indexO, file=paste0("scen2_par", gammapar, "_randindexO.Rdata") )
+  save(rand_indexD, file=paste0("scen2_par", gammapar, "_randindexD.Rdata") )
+  save(false_negatives, file=paste0("scen2_par", gammapar, "_false_neg.Rdata") )
+  save(false_positives, file=paste0("scen2_par", gammapar, "_false_pos.Rdata") )
+
+  if(nsim%%5 == 0) print(nsim)
+}
+
+
+mclapply(1:nrow(matt), function(x) AA_comp(nsim = matt[x,1], gammapar = matt[x,2]), mc.cores = 6 )
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
