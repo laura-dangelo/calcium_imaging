@@ -176,7 +176,7 @@ out$p = c(out$p, run$p)
 
 rm(list=("run"))
 
-burnin = 1:1000
+burnin = 900:1100
 out$calcium = out$calcium[,-burnin]
 out$clusterO = out$clusterO[,-burnin]
 out$clusterD = out$clusterD[,-burnin]
@@ -192,7 +192,7 @@ out$maxK = out$maxK[-burnin]
 out$maxL = out$maxL[-burnin]
 str(out)
 
-save(out, file = "res_realdata_161220d.Rdata")
+# save(out, file = "res_realdata_181220c.Rdata")
 out$calcium = NULL
 # burnin 2000
 
@@ -228,17 +228,20 @@ lines(1:length(out$maxK[-burnin]), cumsum(out$maxK[-burnin])/1:length(out$maxL[-
 out$clusterD[,100]
 
 
-burnin = 1:850
+burnin = 1:1200
 barplot(table(apply(out$clusterO[,-burnin], 2, function(x) length(unique(x)) )))
 
 AA_gMFM = matrix(0,length(out$b[-burnin]),n)
+n = nrow(out$clusterO)
 for(i in 1:length(out$b[-burnin]))
 {
   ii = i + max(burnin)
   AA_gMFM[i, t(out$clusterO)[ii,] >0] = out$A[out$clusterO[out$clusterO[,ii] >0,ii]+1,ii]
 }
 
-# save(AA_gMFM, file = "AA_realdata_161220.Rdata")
+
+
+# save(AA_gMFM, file = "AA_realdata_181220.Rdata")
 est_spikes = colMeans(AA_gMFM) 
 est_spikes[which( apply(t(out$clusterO)[-burnin,], 2, function(x) mean(x != 0))<0.5)] = 0
 times = which(est_spikes>0)
@@ -277,11 +280,14 @@ moda = as.numeric(attr(which.max(table( apply(subsetAA, 1, function(x) length(un
 A_ind = subsetAA[apply(subsetAA, 1, function(x) length(unique( x )))== moda,]
 dataa = data.frame(A = A_ind[A_ind>0])
 plot1 <- ggplot(data = dataa, aes(x = A)) + 
-  geom_histogram(aes(y = ..density..), col = "#00AFBB", fill = "#00AFBB", alpha = 0.3) +   
-  stat_density(aes(y = ..density..), fill = 1, alpha = 0, col = 1) + 
+  geom_histogram(aes(x = A[A<1.11], y = ..density..), bins = 19, col = "#00AFBB", fill = "#00AFBB", alpha = 0.3, size = 0.2) +   
+#  stat_density(aes(y = ..density..), fill = 1, alpha = 0, col = 1) + 
   theme_bw() +
-  scale_x_continuous(limits=c(0.1,1.3), breaks = seq(0.2,1.4,by=0.2), name = "") + 
-  scale_y_continuous(name = "Static gratings")
+  scale_x_continuous(limits=c(0.1,1.75), breaks = seq(0.15,1.75, by=0.25), name = "") + 
+  scale_y_continuous(name = "Static gratings") +
+  theme(panel.grid.minor = element_blank())
+
+
 
 intt = which((g==2))
 subsetAA = AA_gMFM[,intt]
@@ -289,11 +295,14 @@ moda = as.numeric(attr(which.max(table( apply(subsetAA, 1, function(x) length(un
 A_ind = subsetAA[apply(subsetAA, 1, function(x) length(unique( x )))== moda,]
 dataa = data.frame(A = A_ind[A_ind>0])
 plot2 <- ggplot(data = dataa, aes(x = A)) + 
-  geom_histogram(aes(y = ..density..), col = "#00AFBB", fill = "#00AFBB", alpha = 0.3) +   
-  stat_density(aes(y = ..density..), fill = 1, alpha = 0, col = 1) + 
+  geom_histogram(aes(y = ..density..), bins = 19, col = "#00AFBB", fill = "#00AFBB", alpha = 0.3, size = 0.2) +   
+#  stat_density(aes(y = ..density..), fill = 1, alpha = 0, col = 1) + 
   theme_bw() +
-  scale_x_continuous(limits=c(0.1,1.3), breaks = seq(0.2,1.4,by=0.2), name = "") + 
-  scale_y_continuous(name = "Natural scene")
+  scale_x_continuous(limits=c(0.1,1.75), breaks = seq(0.15,1.75,by=0.25), name = "") + 
+  scale_y_continuous(name = "Natural scene")+
+  theme(panel.grid.minor = element_blank())
+
+
 
 intt = which((g==3))
 subsetAA = AA_gMFM[,intt]
@@ -301,11 +310,12 @@ moda = as.numeric(attr(which.max(table( apply(subsetAA, 1, function(x) length(un
 A_ind = subsetAA[apply(subsetAA, 1, function(x) length(unique( x )))== moda,]
 dataa = data.frame(A = A_ind[A_ind>0])
 plot3 <- ggplot(data = dataa, aes(x = A)) + 
-  geom_histogram(aes(y = ..density..), col = "#00AFBB", fill = "#00AFBB", alpha = 0.3) +   
-  stat_density(aes(y = ..density..), fill = 1, alpha = 0, col = 1) + 
+  geom_histogram(aes(y = ..density..), bins = 19, col = "#00AFBB", fill = "#00AFBB", alpha = 0.3, size = 0.2) +   
+#  stat_density(aes(y = ..density..), fill = 1, alpha = 0, col = 1) + 
   theme_bw() +
-  scale_x_continuous(limits=c(0.1,1.3), breaks = seq(0.2,1.4,by=0.2), name = "A") + 
-  scale_y_continuous(name = "Natural movie")
+  scale_x_continuous(limits=c(0.1,1.75), breaks = seq(0.15,1.75,by=0.25), name = "A") + 
+  scale_y_continuous(name = "Natural movie")+
+  theme(panel.grid.minor = element_blank())
 
 
 require(gridExtra)
