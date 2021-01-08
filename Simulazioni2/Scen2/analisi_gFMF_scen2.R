@@ -125,6 +125,36 @@ for(nsim in 1:50)
 }
 
 
+TP = numeric(50)
+TN = numeric(50)
+FN = numeric(50)
+FP = numeric(50)
+for(nsim in 1:50)
+{
+  filename = paste0("~/Documents/Dottorato/2.06 Calcium imaging/calcium_imaging/calcium_imaging/Simulazioni2/Scen2/data/data_scen2_seed", 
+                    nsim, ".Rdata")
+  load(file = filename) 
+  
+  s = out$s
+  spp = which(s>0)
+  n = length(out$y)
+  
+  FN[nsim] = round(false_negatives[nsim] * length(spp))
+  FP[nsim] = round(false_positives[nsim] * (n-length(spp)))
+  
+  TN[nsim] = (n-length(spp)) - FP[nsim]
+  TP[nsim] = length(spp) - FN[nsim]
+}
+save(FN, file=paste0("scen2_par", gammapar, "_FN.Rdata") )
+save(FP, file=paste0("scen2_par", gammapar, "_FP.Rdata") )
+save(TN, file=paste0("scen2_par", gammapar, "_TN.Rdata") )
+save(TP, file=paste0("scen2_par", gammapar, "_TP.Rdata") )
+
+
+
+
+
+
 save(rand_indexO, file=paste0("scen2_par", gammapar, "_randindexO.Rdata") )
 save(rand_indexD, file=paste0("scen2_par", gammapar, "_randindexD.Rdata") )
 

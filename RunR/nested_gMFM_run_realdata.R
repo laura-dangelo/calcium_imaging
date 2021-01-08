@@ -74,7 +74,8 @@ ggplot(data = df) +
   scale_fill_manual(values = cols) +
   geom_line(aes(x = x, y = y)) +
   theme_bw() +
-  theme(legend.position = "bottom") +
+  theme(legend.position = "bottom",
+        rect = element_rect(fill="transparent", colour=NA)) +
   scale_x_continuous(name = "Time") +
   scale_y_continuous(name = "Calcium level") +
   annotate("text", x = 8000, y = 2.8, label = expression( "~G"[1]), size = 8 ) +
@@ -88,7 +89,7 @@ ggplot(data = df) +
 
 
 # plot solo di un intervallo
-int = 61000:61750
+int = 61000:61500
 
 int = 20600:26000
 ggplot(data = df[int,]) +
@@ -96,7 +97,8 @@ ggplot(data = df[int,]) +
   theme_bw() +
   theme(legend.position = "bottom") +
   scale_x_continuous(name = "Time") +
-  scale_y_continuous(name = "Calcium level")
+  scale_y_continuous(name = "Calcium level")+
+  theme(rect = element_rect(fill="transparent", colour=NA))
 
 
 
