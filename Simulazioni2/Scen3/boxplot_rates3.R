@@ -26,14 +26,14 @@ data_scen3 <- data.frame("value" = c( false_positives_gMFM, false_negatives_gMFM
                                       false_positives_DP, false_negatives_DP,
                                       false_positives_L0, false_negatives_L0),
                          "rate" = rep(c(rep("False positive rate",50), rep("False negative rate", 50)),3),
-                         "model" = c(rep("gMFM", 100), rep("DP", 100), rep("L0", 100))
+                         "model" = c(rep("fCAM", 100), rep("CAM", 100), rep("L0", 100))
 )
 
 p3 = ggplot(data_scen3, aes(x = model, y = value, fill = rate)) + 
   geom_boxplot() +
   facet_wrap(~ rate, scales = "free") +
   xlab("") +
-  ylab("Scenario 1") +
+  ylab("Scenario 3") +
   theme_bw() +
   theme(legend.position = "none",
         axis.text = element_text(size = 10), axis.title = element_text(size = 10), text = element_text(size = 13),
@@ -72,7 +72,7 @@ p31 = ggplot(data_scen3, aes(x = model, y = value, fill = rate)) +
   geom_boxplot() +
   facet_wrap(~ rate, scales = "free") +
   xlab("") +
-  ylab("Scenario 1") +
+  ylab("Scenario 3") +
   theme_bw() +
   theme(legend.position = "none",
         axis.text = element_text(size = 10), axis.title = element_text(size = 10), text = element_text(size = 13),

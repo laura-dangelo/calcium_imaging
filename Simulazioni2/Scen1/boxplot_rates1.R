@@ -26,7 +26,7 @@ data_scen1 <- data.frame("value" = c( false_positives_gMFM, false_negatives_gMFM
                                       false_positives_DP, false_negatives_DP,
                                       false_positives_L0, false_negatives_L0),
                          "rate" = rep(c(rep("False positive rate",50), rep("False negative rate", 50)),3),
-                         "model" = c(rep("gMFM", 100), rep("DP", 100), rep("L0", 100))
+                         "model" = c(rep("fCAM", 100), rep("CAM", 100), rep("L0", 100))
 )
 
 p1 = ggplot(data_scen1, aes(x = model, y = value, fill = rate)) + 

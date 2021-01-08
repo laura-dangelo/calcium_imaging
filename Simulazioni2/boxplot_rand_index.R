@@ -51,7 +51,7 @@ rand_indexD_DP3 = rand_indexD
 data_rand = data.frame("value" = c( rowMeans(rand_indexO_gMFM1), rowMeans(rand_indexO_DP1),
                                     rowMeans(rand_indexO_gMFM2), rowMeans(rand_indexO_DP2),
                                     rowMeans(rand_indexO_gMFM3), rowMeans(rand_indexO_DP3) ),
-                       "model" = rep( c( rep("gMFM", 50), rep("DP", 50) ), 3),
+                       "model" = rep( c( rep("fCAM", 50), rep("CAM", 50) ), 3),
                        "scenario" = c( rep("Scenario 1", 100), rep("Scenario 2", 100), rep("Scenario 3", 100) )
 )
 
@@ -71,7 +71,7 @@ ggplot(data_rand, aes(x = model, y = value, fill = scenario)) +
 data_randD = data.frame("value" = c( rowMeans(rand_indexD_gMFM1), rowMeans(rand_indexD_DP1),
                                     rowMeans(rand_indexD_gMFM2), rowMeans(rand_indexD_DP2),
                                     rowMeans(rand_indexD_gMFM3), rowMeans(rand_indexD_DP3) ),
-                       "model" = rep( c( rep("gMFM", 50), rep("DP", 50) ), 3),
+                       "model" = rep( c( rep("fCAM", 50), rep("CAM", 50) ), 3),
                        "scenario" = c( rep("Scenario 1", 100), rep("Scenario 2", 100), rep("Scenario 3", 100) )
 )
 
@@ -94,7 +94,7 @@ ggplot(data_randD, aes(x = model, y = value, fill = scenario)) +
 
 data_rand1 = data.frame("value" = c( rowMeans(rand_indexO_gMFM1), rowMeans(rand_indexO_DP1),
                                     rowMeans(rand_indexD_gMFM1), rowMeans(rand_indexD_DP1) ),
-                       "model" = rep( c( rep("gMFM", 50), rep("DP", 50) ), 2),
+                       "model" = rep( c( rep("fCAM", 50), rep("CAM", 50) ), 2),
                        "cluster" = c( rep("Observational clusters", 100), rep("Distributional clusters", 100) )
                       )
 
@@ -107,13 +107,15 @@ g1 = ggplot(data_rand1, aes(x = model, y = value, fill = cluster)) +
   theme(legend.position = "none",
         axis.text = element_text(size = 10), axis.title = element_text(size = 10), text = element_text(size = 13),
         axis.title.x = element_text(size = 13),
-        axis.title.y = element_text(size = 13)) 
+        axis.title.y = element_text(size = 13),
+        rect = element_rect(fill = "transparent"),
+        panel.background = element_rect(fill = "transparent", colour = NA)) 
 
 
 
 data_rand2 = data.frame("value" = c( rowMeans(rand_indexO_gMFM2), rowMeans(rand_indexO_DP2),
                                      rowMeans(rand_indexD_gMFM2), rowMeans(rand_indexD_DP2) ),
-                        "model" = rep( c( rep("gMFM", 50), rep("DP", 50) ), 2),
+                        "model" = rep( c( rep("fCAM", 50), rep("CAM", 50) ), 2),
                         "cluster" = c( rep("Observational clusters", 100), rep("Distributional clusters", 100) )
 )
 
@@ -126,12 +128,14 @@ g2 = ggplot(data_rand2, aes(x = model, y = value, fill = cluster)) +
   theme(legend.position = "none",
         axis.text = element_text(size = 10), axis.title = element_text(size = 10), text = element_text(size = 13),
         axis.title.x = element_text(size = 13),
-        axis.title.y = element_text(size = 13)) 
+        axis.title.y = element_text(size = 13),
+        rect = element_rect(fill = "transparent"),
+        panel.background = element_rect(fill = "transparent", colour = NA)) 
 
 
 data_rand3 = data.frame("value" = c( rowMeans(rand_indexO_gMFM3), rowMeans(rand_indexO_DP3),
                                      rowMeans(rand_indexD_gMFM3), rowMeans(rand_indexD_DP3) ),
-                        "model" = rep( c( rep("gMFM", 50), rep("DP", 50) ), 2),
+                        "model" = rep( c( rep("fCAM", 50), rep("CAM", 50) ), 2),
                         "cluster" = c( rep("Observational clusters", 100), rep("Distributional clusters", 100) )
 )
 
@@ -144,7 +148,9 @@ g3 = ggplot(data_rand3, aes(x = model, y = value, fill = cluster)) +
   theme(legend.position = "none",
         axis.text = element_text(size = 10), axis.title = element_text(size = 10), text = element_text(size = 13),
         axis.title.x = element_text(size = 13),
-        axis.title.y = element_text(size = 13)) 
+        axis.title.y = element_text(size = 13),
+        rect = element_rect(fill = "transparent"),
+        panel.background = element_rect(fill = "transparent", colour = NA)) 
 
 
 require(gridExtra)
