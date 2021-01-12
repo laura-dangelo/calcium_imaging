@@ -91,6 +91,7 @@ ggplot(data_randD, aes(x = model, y = value, fill = scenario)) +
 
 
 
+cols = c("#f56e56","#00AFBB",  "#edca40")
 
 data_rand1 = data.frame("value" = c( rowMeans(rand_indexO_gMFM1), rowMeans(rand_indexO_DP1),
                                     rowMeans(rand_indexD_gMFM1), rowMeans(rand_indexD_DP1) ),
@@ -98,12 +99,13 @@ data_rand1 = data.frame("value" = c( rowMeans(rand_indexO_gMFM1), rowMeans(rand_
                        "cluster" = c( rep("Observational clusters", 100), rep("Distributional clusters", 100) )
                       )
 
-g1 = ggplot(data_rand1, aes(x = model, y = value, fill = cluster)) + 
+g1 = ggplot(data_rand1, aes(x = model, y = value, fill = model)) + 
   geom_boxplot() +
   facet_wrap(~ cluster, scales = "free") +
   xlab("") +
   ylab("Scenario 1") +
   theme_bw() +
+  scale_fill_manual(values = cols) +
   theme(legend.position = "none",
         axis.text = element_text(size = 10), axis.title = element_text(size = 10), text = element_text(size = 13),
         axis.title.x = element_text(size = 13),
@@ -119,12 +121,13 @@ data_rand2 = data.frame("value" = c( rowMeans(rand_indexO_gMFM2), rowMeans(rand_
                         "cluster" = c( rep("Observational clusters", 100), rep("Distributional clusters", 100) )
 )
 
-g2 = ggplot(data_rand2, aes(x = model, y = value, fill = cluster)) + 
+g2 = ggplot(data_rand2, aes(x = model, y = value, fill = model)) + 
   geom_boxplot() +
   facet_wrap(~ cluster, scales = "free") +
   xlab("") +
   ylab("Scenario 2") +
   theme_bw() +
+  scale_fill_manual(values = cols) +
   theme(legend.position = "none",
         axis.text = element_text(size = 10), axis.title = element_text(size = 10), text = element_text(size = 13),
         axis.title.x = element_text(size = 13),
@@ -139,12 +142,13 @@ data_rand3 = data.frame("value" = c( rowMeans(rand_indexO_gMFM3), rowMeans(rand_
                         "cluster" = c( rep("Observational clusters", 100), rep("Distributional clusters", 100) )
 )
 
-g3 = ggplot(data_rand3, aes(x = model, y = value, fill = cluster)) + 
+g3 = ggplot(data_rand3, aes(x = model, y = value, fill = model)) + 
   geom_boxplot() +
   facet_wrap(~ cluster, scales = "free") +
   xlab("") +
   ylab("Scenario 3") +
   theme_bw() +
+  scale_fill_manual(values = cols) +
   theme(legend.position = "none",
         axis.text = element_text(size = 10), axis.title = element_text(size = 10), text = element_text(size = 13),
         axis.title.x = element_text(size = 13),

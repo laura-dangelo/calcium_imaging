@@ -29,11 +29,12 @@ data_scen3 <- data.frame("value" = c( false_positives_gMFM, false_negatives_gMFM
                          "model" = c(rep("fCAM", 100), rep("CAM", 100), rep("L0", 100))
 )
 
-p3 = ggplot(data_scen3, aes(x = model, y = value, fill = rate)) + 
+p3 = ggplot(data_scen3, aes(x = model, y = value, fill = model)) + 
   geom_boxplot() +
   facet_wrap(~ rate, scales = "free") +
   xlab("") +
   ylab("Scenario 3") +
+  scale_fill_manual(values = cols) +
   theme_bw() +
   theme(legend.position = "none",
         axis.text = element_text(size = 10), axis.title = element_text(size = 10), text = element_text(size = 13),

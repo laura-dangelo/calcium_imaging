@@ -287,7 +287,9 @@ plot1 <- ggplot(data = dataa, aes(x = A)) +
   theme_bw() +
   scale_x_continuous(limits=c(0.1,1.75), breaks = seq(0.15,1.75, by=0.25), name = "") + 
   scale_y_continuous(name = "Static gratings") +
-  theme(panel.grid.minor = element_blank())
+  theme(panel.grid.minor = element_blank(),
+        rect = element_rect(fill = "transparent"),
+        panel.background = element_rect(fill = "transparent", colour = NA)) 
 
 
 
@@ -302,7 +304,9 @@ plot2 <- ggplot(data = dataa, aes(x = A)) +
   theme_bw() +
   scale_x_continuous(limits=c(0.1,1.75), breaks = seq(0.15,1.75,by=0.25), name = "") + 
   scale_y_continuous(name = "Natural scene")+
-  theme(panel.grid.minor = element_blank())
+  theme(panel.grid.minor = element_blank(),
+        rect = element_rect(fill = "transparent"),
+        panel.background = element_rect(fill = "transparent", colour = NA)) 
 
 
 
@@ -317,7 +321,9 @@ plot3 <- ggplot(data = dataa, aes(x = A)) +
   theme_bw() +
   scale_x_continuous(limits=c(0.1,1.75), breaks = seq(0.15,1.75,by=0.25), name = "A") + 
   scale_y_continuous(name = "Natural movie")+
-  theme(panel.grid.minor = element_blank())
+  theme(panel.grid.minor = element_blank(),
+        rect = element_rect(fill = "transparent"),
+        panel.background = element_rect(fill = "transparent", colour = NA)) 
 
 
 require(gridExtra)

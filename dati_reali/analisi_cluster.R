@@ -239,7 +239,11 @@ g1 = ggplot(data = df) +
   scale_x_continuous(name = "Time") +
   scale_y_continuous(name = "Static grating") +
   scale_color_manual(limits = c("0.17", "0.47", "0.84", "1.07", "1.40","1.65"), values = cols) +
-  guides(colour = guide_legend(nrow=1, override.aes = list(size=3)))
+  guides(colour = guide_legend(nrow=1, override.aes = list(size=3))) +
+  theme(rect = element_rect(fill = "transparent"),
+        panel.background = element_rect(fill = "transparent", colour = NA)) 
+
+
 
 
 
@@ -269,7 +273,9 @@ g2 = ggplot(data = df) +
   scale_color_manual(values = cols[1:4]) +
   theme(legend.position = "none") +
   scale_x_continuous(name = "Time") +
-  scale_y_continuous(name = "Natural scene") 
+  scale_y_continuous(name = "Natural scene") +
+  theme(rect = element_rect(fill = "transparent"),
+        panel.background = element_rect(fill = "transparent", colour = NA)) 
 
 
 
@@ -300,7 +306,9 @@ g3 = ggplot(data = df) +
   scale_color_manual(values = cols) +
   theme(legend.position = "bottom") +
   scale_x_continuous(name = "Time") +
-  scale_y_continuous(name = "Natural movie") 
+  scale_y_continuous(name = "Natural movie") +
+  theme(rect = element_rect(fill = "transparent"),
+        panel.background = element_rect(fill = "transparent", colour = NA)) 
 
 
 
